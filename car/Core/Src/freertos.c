@@ -44,19 +44,40 @@
 #define TURN_TIMEOUT_MS          15000U
 #define EXIT_TIMEOUT_MS          30000U
 #define PUSH_TIMEOUT_MS           5000U
-#define VISION_STABLE_COUNT          2U
-#define VISION_RAW_TRIGGER         380U
-#define VISION_SMOOTH_TRIGGER      550U
-#define VISION_NEAR_SMOOTH         750U
-#define VISION_MID_SMOOTH          600U
-#define VISION_NEAR_TRAVEL_MM     2800U
-#define VISION_MID_TRAVEL_MM      3400U
 #define SERVO_MOVE_TIME_MS         700U
 #define VISION_RX_BUF_SIZE        128U
 #define VISION_SCORE_MAX         1000U
 /* 这里先按 1 count = 1 mm 留接口，后面按实车再标定 */
 #define ENCODER_MM_PER_COUNT      1.0f
 #define FIXED_TRAVEL_MM           4000U
+
+/* 比赛调参接口：以后优先只改这里 */
+volatile uint16_t g_vision_detect_min_count = 2U;
+volatile uint16_t g_vision_raw_trigger = 380U;
+volatile uint16_t g_vision_smooth_trigger = 550U;
+volatile uint16_t g_vision_decision_trigger = 600U;
+volatile uint16_t g_push_distance_divisor = 2U;
+volatile uint16_t g_push_distance_min_mm = 50U;
+volatile uint16_t g_servo_open_angle = 31U;
+volatile uint16_t g_servo_close_angle = 165U;
+/*
+ * g_vision_detect_min_count:
+ *   1 = 更灵敏，更容易触发；2 = 默认；3 = 更稳，但更容易错过
+ * g_vision_raw_trigger / g_vision_smooth_trigger / g_vision_decision_trigger:
+ *   数值越小越松，越大越严
+ *   推荐先调 detect_min_count，再调 decision_trigger，最后微调 raw/smooth
+ * g_push_distance_divisor:
+ *   推出距离 = 本次抓取前进距离 / divisor，默认 2 表示一半
+ * g_push_distance_min_mm:
+ *   推出距离下限，避免一半后太短
+ * g_servo_open_angle / g_servo_close_angle:
+ *   爪子张开/闭合角度；当前把 open 从 32 下调到 31，减少释放后卡住风险
+ */
+
+#define VISION_NEAR_SMOOTH         750U
+#define VISION_MID_SMOOTH          600U
+#define VISION_NEAR_TRAVEL_MM     2800U
+#define VISION_MID_TRAVEL_MM      3400U
 
 #define ROBOT_SM_TEST_COMM    0
 #define ROBOT_SM_TEST_SENSOR  1  //测试：1  启用：0

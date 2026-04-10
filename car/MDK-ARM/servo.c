@@ -1,5 +1,6 @@
- #include "servo.h"
+  #include "servo.h"
   #include "tim.h"
+  #include "robot.h"
 
   static uint16_t Servo_AngleToPulse(uint8_t
   angle)
@@ -25,13 +26,13 @@
   void Servo_Open(uint8_t servo_id)
   {
       Servo_SetAngle(servo_id,
-  SERVO_OPEN_ANGLE);
+  (uint8_t)g_servo_open_angle);
   }
 
   void Servo_Close(uint8_t servo_id)
   {
       Servo_SetAngle(servo_id,
-  SERVO_CLOSE_ANGLE);
+  (uint8_t)g_servo_close_angle);
   }
  
   void TIM8_SwitchToServo(void)
