@@ -51,6 +51,26 @@
 #define ENCODER_MM_PER_COUNT      1.0f
 #define FIXED_TRAVEL_MM           4000U
 
+#define VISION_NEAR_SMOOTH         750U
+#define VISION_MID_SMOOTH          600U
+#define VISION_NEAR_TRAVEL_MM     2800U
+#define VISION_MID_TRAVEL_MM      3400U
+
+#define ROBOT_SM_TEST_COMM    0
+#define ROBOT_SM_TEST_SENSOR  1  //测试：1  启用：0
+#define ROBOT_SM_TEST_SERVO   0
+#define ROBOT_SM_TEST_IMU     0
+#define ROBOT_SM_DEBUG_PRINT  1
+
+#define BOOT_LIGHT_WAIT_MS        4000U
+/* USER CODE END PD */
+
+/* Private macro -------------------------------------------------------------*/
+/* USER CODE BEGIN PM */
+/* USER CODE END PM */
+
+/* Private variables ---------------------------------------------------------*/
+/* USER CODE BEGIN Variables */
 /* 比赛调参接口：以后优先只改这里 */
 volatile uint16_t g_vision_detect_min_count = 2U;
 volatile uint16_t g_vision_raw_trigger = 380U;
@@ -73,27 +93,6 @@ volatile uint16_t g_servo_close_angle = 165U;
  * g_servo_open_angle / g_servo_close_angle:
  *   爪子张开/闭合角度；当前把 open 从 32 下调到 31，减少释放后卡住风险
  */
-
-#define VISION_NEAR_SMOOTH         750U
-#define VISION_MID_SMOOTH          600U
-#define VISION_NEAR_TRAVEL_MM     2800U
-#define VISION_MID_TRAVEL_MM      3400U
-
-#define ROBOT_SM_TEST_COMM    0
-#define ROBOT_SM_TEST_SENSOR  1  //测试：1  启用：0
-#define ROBOT_SM_TEST_SERVO   0
-#define ROBOT_SM_TEST_IMU     0
-#define ROBOT_SM_DEBUG_PRINT  1
-
-#define BOOT_LIGHT_WAIT_MS        4000U
-/* USER CODE END PD */
-
-/* Private macro -------------------------------------------------------------*/
-/* USER CODE BEGIN PM */
-/* USER CODE END PM */
-
-/* Private variables ---------------------------------------------------------*/
-/* USER CODE BEGIN Variables */
 volatile int g_enc1 = 0;
 volatile int g_enc2 = 0;
 volatile int g_enc3 = 0;

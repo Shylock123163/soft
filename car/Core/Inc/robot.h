@@ -32,6 +32,14 @@ typedef enum {
     CLOSE_REASON_FRONT_SWITCH,
 } CloseReason_t;
 
+extern volatile uint16_t     g_vision_detect_min_count;
+extern volatile uint16_t     g_vision_raw_trigger;
+extern volatile uint16_t     g_vision_smooth_trigger;
+extern volatile uint16_t     g_vision_decision_trigger;
+extern volatile uint16_t     g_push_distance_divisor;
+extern volatile uint16_t     g_push_distance_min_mm;
+extern volatile uint16_t     g_servo_open_angle;
+extern volatile uint16_t     g_servo_close_angle;
 extern volatile RobotState_t g_robot_state;
 extern volatile uint8_t      g_bumper_left;
 extern volatile uint8_t      g_bumper_right;
