@@ -1,9 +1,9 @@
 car\tasks.o: ../Middlewares/Third_Party/FreeRTOS/Source/tasks.c
-car\tasks.o: D:\Keil5\ARM\ARMCC\Bin\..\include\stdlib.h
-car\tasks.o: D:\Keil5\ARM\ARMCC\Bin\..\include\string.h
+car\tasks.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdlib.h
+car\tasks.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\string.h
 car\tasks.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/FreeRTOS.h
-car\tasks.o: D:\Keil5\ARM\ARMCC\Bin\..\include\stddef.h
-car\tasks.o: D:\Keil5\ARM\ARMCC\Bin\..\include\stdint.h
+car\tasks.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stddef.h
+car\tasks.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdint.h
 car\tasks.o: ../Core/Inc/FreeRTOSConfig.h
 car\tasks.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/projdefs.h
 car\tasks.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/portable.h

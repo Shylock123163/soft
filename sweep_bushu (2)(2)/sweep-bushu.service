@@ -1,0 +1,17 @@
+[Unit]
+Description=Sweep Bushu Clutter Detection Web Service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=__RUN_USER__
+WorkingDirectory=__WORKDIR__
+ExecStart=/bin/bash start_web_detect.sh
+Restart=always
+RestartSec=2
+StandardOutput=append:__WORKDIR__/logs/service.log
+StandardError=append:__WORKDIR__/logs/service.log
+
+[Install]
+WantedBy=multi-user.target

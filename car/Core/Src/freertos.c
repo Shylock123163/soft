@@ -35,32 +35,36 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define SEARCH_SPEED                40
+#define SEARCH_SPEED                38
 #define APPROACH_SPEED              28
-#define EXIT_SPEED                  28
 #define BACKOUT_SPEED              (-25)
 #define SEARCH_TIMEOUT_MS        300000U
-#define FORWARD_TIMEOUT_MS        8000U
+#define FORWARD_TIMEOUT_MS       30000U
 #define GRAB_TIMEOUT_MS           2500U
-#define TURN_TIMEOUT_MS           5000U
-#define EXIT_TIMEOUT_MS           8000U
-#define TOP_EXIT_DELTA_MM          120U
-#define TOP_EXIT_COUNT_TH            5U
-#define VISION_STABLE_COUNT          3U
+#define TURN_TIMEOUT_MS          15000U
+#define EXIT_TIMEOUT_MS          30000U
+#define PUSH_TIMEOUT_MS           5000U
+#define VISION_STABLE_COUNT          2U
+#define VISION_RAW_TRIGGER         380U
+#define VISION_SMOOTH_TRIGGER      550U
+#define VISION_NEAR_SMOOTH         750U
+#define VISION_MID_SMOOTH          600U
+#define VISION_NEAR_TRAVEL_MM     2800U
+#define VISION_MID_TRAVEL_MM      3400U
 #define SERVO_MOVE_TIME_MS         700U
-#define DEFAULT_TURN_DIR   TURN_DIR_RIGHT
-#define VISION_RX_BUF_SIZE         64U
+#define VISION_RX_BUF_SIZE        128U
+#define VISION_SCORE_MAX         1000U
 /* 这里先按 1 count = 1 mm 留接口，后面按实车再标定 */
 #define ENCODER_MM_PER_COUNT      1.0f
+#define FIXED_TRAVEL_MM           4000U
 
+#define ROBOT_SM_TEST_COMM    0
+#define ROBOT_SM_TEST_SENSOR  1  //测试：1  启用：0
+#define ROBOT_SM_TEST_SERVO   0
+#define ROBOT_SM_TEST_IMU     0
+#define ROBOT_SM_DEBUG_PRINT  1
 
-  #define ROBOT_SM_TEST_COMM    0
-  #define ROBOT_SM_TEST_SENSOR  0
-  #define ROBOT_SM_TEST_SERVO   0
-  #define ROBOT_SM_TEST_IMU     0
-  #define ROBOT_SM_DEBUG_PRINT  1
-
-
+#define BOOT_LIGHT_WAIT_MS        4000U
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -81,10 +85,12 @@ volatile RobotState_t g_robot_state = STATE_BOOT_PREPARE;
 volatile uint8_t g_vision_detected = 0;
 volatile uint8_t g_vision_position = 0;
 volatile uint16_t g_vision_distance = 0;
+volatile uint16_t g_vision_smooth = 0;
+volatile uint16_t g_vision_raw = 0;
+volatile uint16_t g_vision_decision = 0;
 volatile uint16_t g_target_forward_mm = 0;
 volatile uint16_t g_forward_progress_mm = 0;
 volatile CloseReason_t g_close_reason = CLOSE_REASON_NONE;
-volatile TurnDir_t g_turn_dir = TURN_DIR_NONE;
 
 volatile uint8_t g_bumper_left = 0;
 volatile uint8_t g_bumper_right = 0;
@@ -118,6 +124,8 @@ osThreadId CommTaskHandle;
 /* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN FunctionPrototypes */
 static uint8_t VisionDetectedStable(void);
+static uint16_t Robot_EstimateForwardMm(void);
+static uint16_t Robot_ComputePushTravelMm(uint16_t forward_mm);
 static uint8_t StateTimedOut(uint32_t timeout_ms);
 static void EnterState(RobotState_t next_state);
 static uint8_t RobotNeedLight(void);
@@ -128,11 +136,10 @@ static void Robot_UpdateEncoderSnapshot(void);
 static void Robot_UpdateForwardProgress(void);
 static void Robot_VisionRxStart(void);
 __weak void Robot_VisionProtocol_Poll(void);
- static void Robot_StateMachineTestStep(void);
-
- static const char *Robot_StateName(RobotState_t
-   state);
-  static void Robot_StateMachineTestStep(void);
+static uint8_t Robot_ParseVisionScore(const char *token, uint16_t *out_value);
+static void Robot_ResetVisionData(void);
+static void Robot_StateMachineTestStep(void);
+static const char *Robot_StateName(RobotState_t state);
 /* USER CODE END FunctionPrototypes */
 
 void StartMotorTask(void const * argument);
@@ -224,26 +231,29 @@ void StartMotorTask(void const * argument)
 
     switch (g_robot_state)
     {
+      /* 启动准备：停车、开爪、亮灯等待 */
       case STATE_BOOT_PREPARE:
-        if (entered != 0U)
-        {
-          Chassis_Stop();
-          Robot_ClearFrontSwitchLatch();
-          Robot_ResetForwardProgress();
-          g_target_forward_mm = 0;
-          g_close_reason = CLOSE_REASON_NONE;
-          g_turn_dir = TURN_DIR_NONE;
-          g_exit_confirmed = 0U;
-          g_top_inside_ref = 0U;
-          g_servo_cmd = SERVO_CMD_OPEN;
-        }
+    if (entered != 0U)
+    {
+      Chassis_Stop();
+      Robot_ClearFrontSwitchLatch();
+      Robot_ResetForwardProgress();
+      g_target_forward_mm = 0;
+      g_close_reason = CLOSE_REASON_NONE;
+      g_exit_confirmed = 0U;
+      g_top_inside_ref = 0U;
+      g_servo_cmd = SERVO_CMD_OPEN;
+    }
 
-        if ((g_servo_busy == 0U) && (g_servo_cmd == SERVO_CMD_NONE))
-        {
-          EnterState(STATE_SEARCH_STRAFE);
-        }
-        break;
+    if ((g_servo_busy == 0U) &&
+        (g_servo_cmd == SERVO_CMD_NONE) &&
+        (StateTimedOut(BOOT_LIGHT_WAIT_MS) != 0U))
+    {
+      EnterState(STATE_SEARCH_STRAFE);
+    }
+    break;
 
+      /* 搜索目标：持续左移，直到视觉稳定识别 */
       case STATE_SEARCH_STRAFE:
         Chassis_RunStrafeLeftPID(SEARCH_SPEED);
         if (VisionDetectedStable() != 0U)
@@ -257,20 +267,14 @@ void StartMotorTask(void const * argument)
         }
         break;
 
+      /* 锁定目标：写死本次前进距离并清零里程 */
       case STATE_LOCK_TARGET:
         Chassis_Stop();
         if (entered != 0U)
         {
-          if (g_vision_distance == 0U)
-          {
-            EnterState(STATE_ERROR);
-            break;
-          }
-
-          g_target_forward_mm = g_vision_distance;
+          g_target_forward_mm = Robot_EstimateForwardMm();
           g_top_inside_ref = g_dist_top;
           g_close_reason = CLOSE_REASON_NONE;
-          g_turn_dir = TURN_DIR_NONE;
           g_exit_confirmed = 0U;
           Robot_ClearFrontSwitchLatch();
           Robot_ResetForwardProgress();
@@ -278,17 +282,20 @@ void StartMotorTask(void const * argument)
         EnterState(STATE_FORWARD_TO_TARGET);
         break;
 
+      /* 前进抓取：按固定距离前进，抓取时把实际前进里程记下来，供后退等距使用 */
       case STATE_FORWARD_TO_TARGET:
         Chassis_RunStraightPID(APPROACH_SPEED);
         if (g_front_switch_triggered != 0U)
         {
           Chassis_Stop();
+          g_target_forward_mm = g_forward_progress_mm;
           g_close_reason = CLOSE_REASON_FRONT_SWITCH;
           EnterState(STATE_GRAB_CLOSE);
         }
         else if (g_forward_progress_mm >= g_target_forward_mm)
         {
           Chassis_Stop();
+          g_target_forward_mm = g_forward_progress_mm;
           g_close_reason = CLOSE_REASON_DISTANCE;
           EnterState(STATE_GRAB_CLOSE);
         }
@@ -298,6 +305,7 @@ void StartMotorTask(void const * argument)
         }
         break;
 
+      /* 闭爪抓取：抓到目标后先停车并闭合夹爪 */
       case STATE_GRAB_CLOSE:
         Chassis_Stop();
         if (entered != 0U)
@@ -307,14 +315,8 @@ void StartMotorTask(void const * argument)
 
         if ((g_servo_busy == 0U) && (g_servo_cmd == SERVO_CMD_NONE))
         {
-          if (g_close_reason == CLOSE_REASON_FRONT_SWITCH)
-          {
-            EnterState(STATE_EXIT_STRAIGHT);
-          }
-          else
-          {
-            EnterState(STATE_DECIDE_TURN);
-          }
+          Robot_ResetForwardProgress();
+          EnterState(STATE_EXIT_STRAIGHT);
         }
         else if (StateTimedOut(GRAB_TIMEOUT_MS) != 0U)
         {
@@ -322,74 +324,32 @@ void StartMotorTask(void const * argument)
         }
         break;
 
-      case STATE_DECIDE_TURN:
-        Chassis_Stop();
-        if (g_dist_left > g_dist_right)
-        {
-          g_turn_dir = TURN_DIR_LEFT;
-          EnterState(STATE_TURN_LEFT_180);
-        }
-        else if (g_dist_right > g_dist_left)
-        {
-          g_turn_dir = TURN_DIR_RIGHT;
-          EnterState(STATE_TURN_RIGHT_180);
-        }
-        else if (DEFAULT_TURN_DIR == TURN_DIR_LEFT)
-        {
-          g_turn_dir = TURN_DIR_LEFT;
-          EnterState(STATE_TURN_LEFT_180);
-        }
-        else
-        {
-          g_turn_dir = TURN_DIR_RIGHT;
-          EnterState(STATE_TURN_RIGHT_180);
-        }
-        break;
-
-      case STATE_TURN_LEFT_180:
-        if (entered != 0U)
-        {
-          Chassis_StartTurnLeft180();
-        }
-        if (Chassis_RunTurnLeft180() != 0U)
-        {
-          EnterState(STATE_EXIT_STRAIGHT);
-        }
-        else if (StateTimedOut(TURN_TIMEOUT_MS) != 0U)
-        {
-          EnterState(STATE_ERROR);
-        }
-        break;
-
-      case STATE_TURN_RIGHT_180:
-        if (entered != 0U)
-        {
-          Chassis_StartTurnRight180();
-        }
-        if (Chassis_RunTurnRight180() != 0U)
-        {
-          EnterState(STATE_EXIT_STRAIGHT);
-        }
-        else if (StateTimedOut(TURN_TIMEOUT_MS) != 0U)
-        {
-          EnterState(STATE_ERROR);
-        }
-        break;
-
+      /* 左转掉头：后退完成后原地左转 180 度 */
+  case STATE_TURN_LEFT_180:
+    if (entered != 0U)
+    {
+      Chassis_StartTurnLeft180();
+    }
+    if (Chassis_RunTurnLeft180() != 0U)
+    {
+      EnterState(STATE_RELEASE);
+    }
+    else if (StateTimedOut(TURN_TIMEOUT_MS) != 0U)
+    {
+      EnterState(STATE_ERROR);
+    }
+    break;
+      /* 退出后退：按与前进相同的固定距离直线后退，并直接按编码器里程结束 */
       case STATE_EXIT_STRAIGHT:
-        if (g_close_reason == CLOSE_REASON_FRONT_SWITCH)
-        {
-          Chassis_RunStraightPID(BACKOUT_SPEED);
-        }
-        else
-        {
-          Chassis_RunStraightPID(EXIT_SPEED);
-        }
+        g_exit_confirmed = (g_forward_progress_mm >= g_target_forward_mm) ? 1U : 0U;
+        printf("[EXIT] progress=%u target=%u confirm=%u\r\n",
+               g_forward_progress_mm, g_target_forward_mm, g_exit_confirmed);
+        Chassis_RunStraightPID(BACKOUT_SPEED);
 
-        if (g_exit_confirmed != 0U)
+        if (g_forward_progress_mm >= g_target_forward_mm)
         {
           Chassis_Stop();
-          EnterState(STATE_RELEASE);
+          EnterState(STATE_TURN_LEFT_180);
         }
         else if (StateTimedOut(EXIT_TIMEOUT_MS) != 0U)
         {
@@ -397,6 +357,7 @@ void StartMotorTask(void const * argument)
         }
         break;
 
+      /* 释放目标：左转完成后张爪，为推出杂物做准备 */
       case STATE_RELEASE:
         Chassis_Stop();
         if (entered != 0U)
@@ -406,14 +367,67 @@ void StartMotorTask(void const * argument)
 
         if ((g_servo_busy == 0U) && (g_servo_cmd == SERVO_CMD_NONE))
         {
-          EnterState(STATE_DONE);
+          Robot_ResetForwardProgress();
+          g_target_forward_mm = Robot_ComputePushTravelMm(g_target_forward_mm);
+          EnterState(STATE_PUSH_FORWARD);
+        }
+        else if (StateTimedOut(GRAB_TIMEOUT_MS) != 0U)
+        {
+          EnterState(STATE_ERROR);
         }
         break;
 
+      /* 前推杂物：保持白灯，向前固定距离将杂物推出 */
+      case STATE_PUSH_FORWARD:
+        Chassis_RunStraightPID(APPROACH_SPEED);
+        if (g_forward_progress_mm >= g_target_forward_mm)
+        {
+          Chassis_Stop();
+          Robot_ResetForwardProgress();
+          EnterState(STATE_PUSH_BACKWARD);
+        }
+        else if (StateTimedOut(PUSH_TIMEOUT_MS) != 0U)
+        {
+          EnterState(STATE_ERROR);
+        }
+        break;
+
+      /* 后退回位：按相同固定距离后退，回到掉头前附近位置 */
+      case STATE_PUSH_BACKWARD:
+        Chassis_RunStraightPID(BACKOUT_SPEED);
+        if (g_forward_progress_mm >= g_target_forward_mm)
+        {
+          Chassis_Stop();
+          EnterState(STATE_RETURN_TURN_LEFT_180);
+        }
+        else if (StateTimedOut(PUSH_TIMEOUT_MS) != 0U)
+        {
+          EnterState(STATE_ERROR);
+        }
+        break;
+
+      /* 再次左转掉头：恢复到最开始正对沙发底的朝向 */
+      case STATE_RETURN_TURN_LEFT_180:
+        if (entered != 0U)
+        {
+          Chassis_StartTurnLeft180();
+        }
+        if (Chassis_RunTurnLeft180() != 0U)
+        {
+          EnterState(STATE_DONE);
+        }
+        else if (StateTimedOut(TURN_TIMEOUT_MS) != 0U)
+        {
+          EnterState(STATE_ERROR);
+        }
+        break;
+
+      /* 完成阶段：停车，灯带会随状态结束自动熄灭 */
       case STATE_DONE:
         Chassis_Stop();
         break;
 
+      /* 异常阶段：任一步超时或条件异常都进入这里停车 */
       case STATE_ERROR:
       default:
         Chassis_Stop();
@@ -479,6 +493,7 @@ void StartIMUTask(void const * argument)
 	for (;;)
   {
     HWT101_GetValue();
+	printf("[IMU] yaw=%.2f\r\n", fAngle[2]);
     osDelay(10);
   }
 #endif
@@ -501,10 +516,8 @@ void StartSensorTask(void const * argument)
     }
     /* ===== 状态机逻辑测试桩 END ===== */
 #else
-	uint8_t top_exit_count;
 	uint8_t vl53_ready;
-  
-	top_exit_count = 0U;
+
     osDelay(100);
     vl53_ready = (VL53L0X_Init_All() == 0U) ? 1U : 0U;
 
@@ -527,25 +540,8 @@ void StartSensorTask(void const * argument)
     g_front_switch_triggered = ((g_bumper_left != 0U) || (g_bumper_right != 0U)) ? 1U : 0U;
     g_grab_switch_front = g_front_switch_triggered;
 
-    if (g_robot_state == STATE_EXIT_STRAIGHT)
+    if (g_robot_state != STATE_EXIT_STRAIGHT)
     {
-      if ((g_top_inside_ref > 0U) && (g_dist_top > (uint16_t)(g_top_inside_ref + TOP_EXIT_DELTA_MM)))
-      {
-        if (top_exit_count < 255U)
-        {
-          top_exit_count++;
-        }
-      }
-      else
-      {
-        top_exit_count = 0U;
-      }
-
-      g_exit_confirmed = (top_exit_count >= TOP_EXIT_COUNT_TH) ? 1U : 0U;
-    }
-    else
-    {
-      top_exit_count = 0U;
       g_exit_confirmed = 0U;
     }
 
@@ -617,9 +613,30 @@ void StartLedTask(void const * argument)
   /* USER CODE BEGIN StartLedTask */
   uint8_t last_light_on;
   uint8_t light_on;
+  uint16_t waterfall_index;
+  uint16_t tail1_index;
+  uint16_t tail2_index;
+  uint32_t waterfall_tick;
+  uint32_t done_effect_tick;
+  uint8_t done_effect_started;
+  uint8_t color_phase;
+  uint8_t head_r;
+  uint8_t head_g;
+  uint8_t head_b;
+  uint8_t tail1_r;
+  uint8_t tail1_g;
+  uint8_t tail1_b;
+  uint8_t tail2_r;
+  uint8_t tail2_g;
+  uint8_t tail2_b;
 
   (void)argument;
   last_light_on = 2U;
+  waterfall_index = 0U;
+  waterfall_tick = 0U;
+  done_effect_tick = 0U;
+  done_effect_started = 0U;
+  color_phase = 0U;
 
   TIM8_SwitchToWs2812();
   WS2812_Init();
@@ -630,13 +647,91 @@ void StartLedTask(void const * argument)
   {
     light_on = RobotNeedLight();
 
+    if (g_robot_state == STATE_DONE)
+    {
+      if (done_effect_started == 0U)
+      {
+        done_effect_started = 1U;
+        done_effect_tick = HAL_GetTick();
+        waterfall_tick = 0U;
+        waterfall_index = 0U;
+        color_phase = 0U;
+      }
+
+      if ((HAL_GetTick() - done_effect_tick) < 5000U)
+      {
+        if ((g_servo_busy == 0U) && ((HAL_GetTick() - waterfall_tick) >= 80U))
+        {
+          waterfall_tick = HAL_GetTick();
+          tail1_index = (uint16_t)((waterfall_index + LED_NUM - 1U) % LED_NUM);
+          tail2_index = (uint16_t)((waterfall_index + LED_NUM - 2U) % LED_NUM);
+
+          switch (color_phase)
+          {
+            case 0:
+              head_r = 200; head_g = 0;   head_b = 0;
+              tail1_r = 80;  tail1_g = 20;  tail1_b = 0;
+              tail2_r = 20;  tail2_g = 0;   tail2_b = 0;
+              break;
+            case 1:
+              head_r = 200; head_g = 120; head_b = 0;
+              tail1_r = 80;  tail1_g = 40;  tail1_b = 0;
+              tail2_r = 20;  tail2_g = 10;  tail2_b = 0;
+              break;
+            case 2:
+              head_r = 180; head_g = 200; head_b = 0;
+              tail1_r = 60;  tail1_g = 80;  tail1_b = 0;
+              tail2_r = 10;  tail2_g = 20;  tail2_b = 0;
+              break;
+            case 3:
+              head_r = 0;   head_g = 200; head_b = 80;
+              tail1_r = 0;   tail1_g = 80;  tail1_b = 30;
+              tail2_r = 0;   tail2_g = 20;  tail2_b = 10;
+              break;
+            case 4:
+              head_r = 0;   head_g = 120; head_b = 200;
+              tail1_r = 0;   tail1_g = 40;  tail1_b = 80;
+              tail2_r = 0;   tail2_g = 10;  tail2_b = 20;
+              break;
+            default:
+              head_r = 180; head_g = 0;   head_b = 200;
+              tail1_r = 70;  tail1_g = 0;   tail1_b = 80;
+              tail2_r = 20;  tail2_g = 0;   tail2_b = 20;
+              break;
+          }
+
+          TIM8_SwitchToWs2812();
+          WS2812_Clear();
+          WS2812_SetLED(tail2_index, tail2_r, tail2_g, tail2_b);
+          WS2812_SetLED(tail1_index, tail1_r, tail1_g, tail1_b);
+          WS2812_SetLED(waterfall_index, head_r, head_g, head_b);
+
+          waterfall_index = (uint16_t)((waterfall_index + 1U) % LED_NUM);
+          color_phase = (uint8_t)((color_phase + 1U) % 6U);
+        }
+      }
+      else
+      {
+        TIM8_SwitchToWs2812();
+        WS2812_Clear();
+      }
+
+      last_light_on = 0U;
+      osDelay(20);
+      continue;
+    }
+    else
+    {
+      done_effect_started = 0U;
+    }
+
     if ((g_servo_busy == 0U) && (light_on != last_light_on))
     {
       TIM8_SwitchToWs2812();
 
       if (light_on != 0U)
       {
-        WS2812_SetAll(80, 80, 80);
+        WS2812_SetAll(200, 200, 200);
       }
       else
       {
@@ -657,7 +752,8 @@ void StartLedTask(void const * argument)
   {
     /* USER CODE BEGIN StartCommTask */
     (void)argument;
-    Robot_VisionRxStart();
+    
+     Robot_VisionRxStart();
 
     for (;;)
     {
@@ -678,14 +774,22 @@ void StartLedTask(void const * argument)
 static uint8_t VisionDetectedStable(void)
 {
   static uint8_t detect_count = 0;
+  static uint32_t last_print_tick = 0U;
+  uint8_t vision_hit;
 
   if (g_robot_state != STATE_SEARCH_STRAFE)
   {
     detect_count = 0;
+    last_print_tick = 0U;
     return 0U;
   }
 
-  if ((g_vision_detected != 0U) && (g_vision_distance > 0U))
+  vision_hit = ((g_vision_detected != 0U) &&
+                ((g_vision_raw >= g_vision_raw_trigger) ||
+                 (g_vision_smooth >= g_vision_smooth_trigger) ||
+                 (g_vision_decision >= g_vision_decision_trigger))) ? 1U : 0U;
+
+  if (vision_hit != 0U)
   {
     if (detect_count < 255U)
     {
@@ -697,7 +801,53 @@ static uint8_t VisionDetectedStable(void)
     detect_count = 0;
   }
 
-  return (detect_count >= VISION_STABLE_COUNT) ? 1U : 0U;
+#if ROBOT_SM_DEBUG_PRINT
+  if ((HAL_GetTick() - last_print_tick) >= 100U)
+  {
+    last_print_tick = HAL_GetTick();
+    printf("[VISION] det=%u smooth=%u raw=%u dec=%u hit=%u cnt=%u/%u\r\n",
+           g_vision_detected,
+           g_vision_smooth,
+           g_vision_raw,
+           g_vision_decision,
+           vision_hit,
+           detect_count,
+           g_vision_detect_min_count);
+  }
+#endif
+
+  return (detect_count >= g_vision_detect_min_count) ? 1U : 0U;
+}
+
+static uint16_t Robot_EstimateForwardMm(void)
+{
+  if (g_vision_smooth >= VISION_NEAR_SMOOTH)
+  {
+    return VISION_NEAR_TRAVEL_MM;
+  }
+
+  if (g_vision_smooth >= VISION_MID_SMOOTH)
+  {
+    return VISION_MID_TRAVEL_MM;
+  }
+
+  return FIXED_TRAVEL_MM;
+}
+
+static uint16_t Robot_ComputePushTravelMm(uint16_t forward_mm)
+{
+  uint16_t divisor;
+  uint16_t push_mm;
+
+  divisor = (g_push_distance_divisor == 0U) ? 1U : g_push_distance_divisor;
+  push_mm = (uint16_t)(forward_mm / divisor);
+
+  if (push_mm < g_push_distance_min_mm)
+  {
+    push_mm = g_push_distance_min_mm;
+  }
+
+  return push_mm;
 }
 
 static uint8_t StateTimedOut(uint32_t timeout_ms)
@@ -712,11 +862,12 @@ static uint8_t RobotNeedLight(void)
       (g_robot_state == STATE_LOCK_TARGET) ||
       (g_robot_state == STATE_FORWARD_TO_TARGET) ||
       (g_robot_state == STATE_GRAB_CLOSE) ||
-      (g_robot_state == STATE_DECIDE_TURN) ||
       (g_robot_state == STATE_TURN_LEFT_180) ||
-      (g_robot_state == STATE_TURN_RIGHT_180) ||
       (g_robot_state == STATE_EXIT_STRAIGHT) ||
-      (g_robot_state == STATE_RELEASE))
+      (g_robot_state == STATE_RELEASE) ||
+      (g_robot_state == STATE_PUSH_FORWARD) ||
+      (g_robot_state == STATE_PUSH_BACKWARD) ||
+      (g_robot_state == STATE_RETURN_TURN_LEFT_180))
   {
     return 1U;
   }
@@ -755,7 +906,10 @@ static void Robot_UpdateForwardProgress(void)
 {
   uint32_t avg_abs_count;
 
-  if (g_robot_state != STATE_FORWARD_TO_TARGET)
+  if ((g_robot_state != STATE_FORWARD_TO_TARGET) &&
+      (g_robot_state != STATE_EXIT_STRAIGHT) &&
+      (g_robot_state != STATE_PUSH_FORWARD) &&
+      (g_robot_state != STATE_PUSH_BACKWARD))
   {
     return;
   }
@@ -773,253 +927,327 @@ static void Robot_VisionRxStart(void)
 {
   s_vision_rx_ready = 0U;
   s_vision_rx_size = 0U;
+
+  __HAL_UART_CLEAR_PEFLAG(&huart3);
+  __HAL_UART_CLEAR_FEFLAG(&huart3);
+  __HAL_UART_CLEAR_NEFLAG(&huart3);
+  __HAL_UART_CLEAR_OREFLAG(&huart3);
+
+  huart3.ReceptionType = HAL_UART_RECEPTION_STANDARD;
+  huart3.RxState = HAL_UART_STATE_READY;
+
   HAL_UARTEx_ReceiveToIdle_IT(&huart3, s_vision_rx_buf, VISION_RX_BUF_SIZE);
 }
 
+static uint8_t Robot_ParseVisionScore(const char *token, uint16_t *out_value)
+{
+  long value;
+  char *endptr;
+
+  if ((token == NULL) || (out_value == NULL) || (*token == '\0'))
+  {
+    return 0U;
+  }
+
+  value = strtol(token, &endptr, 10);
+  if ((endptr == token) || ((*endptr != '\0') && (*endptr != '\r') && (*endptr != '\n')))
+  {
+    return 0U;
+  }
+
+  if (value < 0L)
+  {
+    value = 0L;
+  }
+  else if (value > VISION_SCORE_MAX)
+  {
+    value = VISION_SCORE_MAX;
+  }
+
+  *out_value = (uint16_t)value;
+  return 1U;
+}
+
+static void Robot_ResetVisionData(void)
+{
+  g_vision_detected = 0U;
+  g_vision_position = 0U;
+  g_vision_distance = 0U;
+  g_vision_smooth = 0U;
+  g_vision_raw = 0U;
+  g_vision_decision = 0U;
+}
+
 static void EnterState(RobotState_t next_state)
-  {
-    g_robot_state = next_state;
-    g_state_timer = HAL_GetTick();
+{
+  g_robot_state = next_state;
+  g_state_timer = HAL_GetTick();
 
-  #if ROBOT_SM_DEBUG_PRINT
-    printf("[STATE] %s | vision=%u dist=%u forward=%u close=%d turn=%d exit=%u\r\n",
-           Robot_StateName(next_state),
-           g_vision_detected,
-           g_vision_distance,
-           g_forward_progress_mm,
-           g_close_reason,
-           g_turn_dir,
-           g_exit_confirmed);
-  #endif
-  }
+#if ROBOT_SM_DEBUG_PRINT
+  printf("[STATE] %s | vision=%u dist=%u forward=%u close=%d exit=%u\r\n",
+         Robot_StateName(next_state),
+         g_vision_detected,
+         g_vision_distance,
+         g_forward_progress_mm,
+         g_close_reason,
+         g_exit_confirmed);
+#endif
+}
   
-  void Robot_VisionProtocol_Poll(void)
+void Robot_VisionProtocol_Poll(void)
+{
+  char line[VISION_RX_BUF_SIZE];
+  char raw_line[VISION_RX_BUF_SIZE];
+  char *token;
+  char *ctx = NULL;
+  uint16_t copy_len;
+  uint16_t smooth = 0U;
+  uint16_t raw = 0U;
+  uint16_t decision = 0U;
+  uint8_t clutter_flag = 0U;
+  uint8_t parse_ok;
+
+  if (s_vision_rx_ready == 0U)
   {
-    char line[VISION_RX_BUF_SIZE];
-    char *token;
-    char *ctx = NULL;
-    uint16_t copy_len;
-    uint8_t clutter_flag = 0U;
-
-    if (s_vision_rx_ready == 0U)
-    {
-      return;
-    }
-
-    s_vision_rx_ready = 0U;
-
-    copy_len = s_vision_rx_size;
-    if ((copy_len == 0U) || (copy_len >= VISION_RX_BUF_SIZE))
-    {
-      Robot_VisionRxStart();
-      return;
-    }
-
-    memcpy(line, s_vision_rx_buf, copy_len);
-    line[copy_len] = '\0';
-    line[strcspn(line, "\r\n")] = '\0';
-
-    if (line[0] == '\0')
-    {
-      Robot_VisionRxStart();
-      return;
-    }
-
-    token = strtok_r(line, ",", &ctx);
-    if ((token == NULL) || (strcmp(token, "$SWEEP") != 0))
-    {
-      Robot_VisionRxStart();
-      return;
-    }
-
-    token = strtok_r(NULL, ",", &ctx);
-    if (token == NULL)
-    {
-      Robot_VisionRxStart();
-      return;
-    }
-
-    clutter_flag = (uint8_t)((atoi(token) != 0) ? 1U : 0U);
-
-    if (clutter_flag != 0U)
-    {
-      g_vision_detected = 1U;
-      g_vision_position = 1U;
-      g_vision_distance = 1000U;
-    }
-    else
-    {
-      g_vision_detected = 0U;
-      g_vision_distance = 0U;
-      g_vision_position = 0U;
-    }
-
-    Robot_VisionRxStart();
+    return;
   }
-//__weak void Robot_VisionProtocol_Poll(void)
-//{
-//  uint16_t rx_size;
-//  char line[VISION_RX_BUF_SIZE + 1U];
-//  char prefix[8];
-//  char state[16];
-//  int clutter_flag;
-//  int smooth_score;
-//  int raw_score;
-//  int decision_score;
-//  int matched;
 
-//  if (s_vision_rx_ready == 0U)
-//  {
-//    return;
-//  }
+  s_vision_rx_ready = 0U;
+  copy_len = s_vision_rx_size;
 
-//  rx_size = s_vision_rx_size;
-//  if (rx_size > VISION_RX_BUF_SIZE)
-//  {
-//    rx_size = VISION_RX_BUF_SIZE;
-//  }
+  if ((copy_len == 0U) || (copy_len >= VISION_RX_BUF_SIZE))
+  {
+#if ROBOT_SM_DEBUG_PRINT
+    printf("[VISION_ERR] bad_len=%u\r\n", copy_len);
+#endif
+    Robot_ResetVisionData();
+    Robot_VisionRxStart();
+    return;
+  }
 
-//  memcpy(line, s_vision_rx_buf, rx_size);
-//  line[rx_size] = '\0';
+  memcpy(line, s_vision_rx_buf, copy_len);
+  line[copy_len] = '\0';
+  line[strcspn(line, "\r\n")] = '\0';
+  strncpy(raw_line, line, sizeof(raw_line) - 1U);
+  raw_line[sizeof(raw_line) - 1U] = '\0';
 
-//  s_vision_rx_ready = 0U;
-//  Robot_VisionRxStart();
+  if (line[0] == '\0')
+  {
+#if ROBOT_SM_DEBUG_PRINT
+    printf("[VISION_ERR] empty_frame\r\n");
+#endif
+    Robot_ResetVisionData();
+    Robot_VisionRxStart();
+    return;
+  }
 
-//  matched = sscanf(line,
-//                   "%7[^,],%d,%d,%d,%d,%15s",
-//                   prefix,
-//                   &clutter_flag,
-//                   &smooth_score,
-//                   &raw_score,
-//                   &decision_score,
-//                   state);
-//  if (matched < 2)
-//  {
-//    return;
-//  }
+  token = strtok_r(line, ",", &ctx);
+  if ((token == NULL) || (strcmp(token, "$SWEEP") != 0))
+  {
+#if ROBOT_SM_DEBUG_PRINT
+    printf("[VISION_ERR] bad_head raw=%s\r\n", raw_line);
+#endif
+    Robot_ResetVisionData();
+    Robot_VisionRxStart();
+    return;
+  }
 
-//  if (strcmp(prefix, "$SWEEP") != 0)
-//  {
-//    return;
-//  }
+  token = strtok_r(NULL, ",", &ctx);
+  if (token == NULL)
+  {
+#if ROBOT_SM_DEBUG_PRINT
+    printf("[VISION_ERR] missing_flag raw=%s\r\n", raw_line);
+#endif
+    Robot_ResetVisionData();
+    Robot_VisionRxStart();
+    return;
+  }
 
-//  g_vision_detected = (clutter_flag != 0) ? 1U : 0U;
-//  g_vision_position = g_vision_detected;
+  if ((strcmp(token, "0") == 0) || (strcmp(token, "1") == 0))
+  {
+    clutter_flag = (uint8_t)(token[0] - '0');
+  }
+  else
+  {
+#if ROBOT_SM_DEBUG_PRINT
+    printf("[VISION_ERR] bad_flag raw=%s\r\n", raw_line);
+#endif
+    Robot_ResetVisionData();
+    Robot_VisionRxStart();
+    return;
+  }
 
-//  if (g_vision_detected == 0U)
-//  {
-//    g_vision_distance = 0U;
-//  }
-//}
-// 
+  token = strtok_r(NULL, ",", &ctx);
+  parse_ok = Robot_ParseVisionScore(token, &smooth);
+  if (parse_ok == 0U)
+  {
+#if ROBOT_SM_DEBUG_PRINT
+    printf("[VISION_ERR] bad_smooth raw=%s\r\n", raw_line);
+#endif
+    Robot_ResetVisionData();
+    Robot_VisionRxStart();
+    return;
+  }
 
+  token = strtok_r(NULL, ",", &ctx);
+  parse_ok = Robot_ParseVisionScore(token, &raw);
+  if (parse_ok == 0U)
+  {
+#if ROBOT_SM_DEBUG_PRINT
+    printf("[VISION_ERR] bad_raw raw=%s\r\n", raw_line);
+#endif
+    Robot_ResetVisionData();
+    Robot_VisionRxStart();
+    return;
+  }
+
+  token = strtok_r(NULL, ",", &ctx);
+  parse_ok = Robot_ParseVisionScore(token, &decision);
+  if (parse_ok == 0U)
+  {
+#if ROBOT_SM_DEBUG_PRINT
+    printf("[VISION_ERR] bad_decision raw=%s\r\n", raw_line);
+#endif
+    Robot_ResetVisionData();
+    Robot_VisionRxStart();
+    return;
+  }
+
+  g_vision_detected = clutter_flag;
+  g_vision_position = clutter_flag;
+  g_vision_smooth = smooth;
+  g_vision_raw = raw;
+  g_vision_decision = decision;
+  g_vision_distance = (clutter_flag != 0U) ? Robot_EstimateForwardMm() : 0U;
+
+#if ROBOT_SM_DEBUG_PRINT
+  printf("[VISION_RX] flag=%u smooth=%u raw=%u dec=%u dist=%u\r\n",
+         g_vision_detected,
+         g_vision_smooth,
+         g_vision_raw,
+         g_vision_decision,
+         g_vision_distance);
+#endif
+
+  Robot_VisionRxStart();
+}
 
 #if ROBOT_SM_TEST_STUB
-  /* ===== 状态机逻辑测试桩 BEGIN ===== */
-   static void Robot_StateMachineTestStep(void)
+static void Robot_StateMachineTestStep(void)
+{
+  static RobotState_t last_state = STATE_ERROR;
+  static uint32_t state_tick = 0U;
+
+  if (g_robot_state != last_state)
   {
-    static RobotState_t last_state = STATE_ERROR;
-    static uint32_t state_tick = 0U;
+    last_state = g_robot_state;
+    state_tick = HAL_GetTick();
+  }
 
-    if (g_robot_state != last_state)
-    {
-      last_state = g_robot_state;
-      state_tick = HAL_GetTick();
-    }
+  switch (g_robot_state)
+  {
+    case STATE_BOOT_PREPARE:
+      g_vision_detected = 0U;
+      g_vision_distance = 0U;
+      g_vision_smooth = 0U;
+      g_vision_raw = 0U;
+      g_vision_decision = 0U;
+      g_forward_progress_mm = 0U;
+      g_exit_confirmed = 0U;
+      g_servo_busy = 0U;
+      g_servo_cmd = SERVO_CMD_NONE;
+      break;
 
-    switch (g_robot_state)
-    {
-      case STATE_BOOT_PREPARE:
-        g_vision_detected = 0U;
-        g_vision_distance = 0U;
-        g_forward_progress_mm = 0U;
-        g_exit_confirmed = 0U;
+    case STATE_SEARCH_STRAFE:
+      g_vision_detected = 1U;
+      g_vision_smooth = 620U;
+      g_vision_raw = 420U;
+      g_vision_decision = 650U;
+      g_vision_distance = Robot_EstimateForwardMm();
+      break;
+
+    case STATE_LOCK_TARGET:
+      g_vision_detected = 1U;
+      g_vision_smooth = 780U;
+      g_vision_raw = 500U;
+      g_vision_decision = 800U;
+      g_vision_distance = Robot_EstimateForwardMm();
+      break;
+
+    case STATE_FORWARD_TO_TARGET:
+      if (g_forward_progress_mm < g_target_forward_mm)
+      {
+        g_forward_progress_mm += 20U;
+      }
+      break;
+
+    case STATE_GRAB_CLOSE:
+      if ((HAL_GetTick() - state_tick) < 50U)
+      {
+        g_servo_busy = 1U;
+      }
+      else if ((HAL_GetTick() - state_tick) > 300U)
+      {
         g_servo_busy = 0U;
         g_servo_cmd = SERVO_CMD_NONE;
-        break;
+      }
+      break;
 
-      case STATE_SEARCH_STRAFE:
-        /* 连续给有效视觉，满足VisionDetectedStable() */
-        g_vision_detected = 1U;
-        g_vision_distance = 450U;
-        break;
+    case STATE_TURN_LEFT_180:
+      if ((HAL_GetTick() - state_tick) > 300U)
+      {
+        EnterState(STATE_RELEASE);
+      }
+      break;
 
-      case STATE_LOCK_TARGET:
-        g_vision_detected = 1U;
-        g_vision_distance = 1000U;
-        break;
+    case STATE_EXIT_STRAIGHT:
+      if ((HAL_GetTick() - state_tick) > 300U)
+      {
+        g_exit_confirmed = 1U;
+      }
+      break;
 
-      case STATE_FORWARD_TO_TARGET:
-        /* 模拟前进累计距离 */
-        if (g_forward_progress_mm < 400U)
-        {
-          g_forward_progress_mm += 20U;
-        }
-        break;
+    case STATE_RELEASE:
+      if ((HAL_GetTick() - state_tick) < 50U)
+      {
+        g_servo_busy = 1U;
+      }
+      else if ((HAL_GetTick() - state_tick) > 300U)
+      {
+        g_servo_busy = 0U;
+        g_servo_cmd = SERVO_CMD_NONE;
+      }
+      break;
 
-      case STATE_GRAB_CLOSE:
-        /* 模拟夹爪动作开始后再完成 */
-        if ((HAL_GetTick() - state_tick) < 50U)
-        {
-          g_servo_busy = 1U;
-        }
-        else if ((HAL_GetTick() - state_tick) >
-  300U)
-        {
-          g_servo_busy = 0U;
-          g_servo_cmd = SERVO_CMD_NONE;
-        }
-        break;
+    case STATE_PUSH_FORWARD:
+      if (g_forward_progress_mm < g_target_forward_mm)
+      {
+        g_forward_progress_mm += 20U;
+      }
+      break;
 
-      case STATE_DECIDE_TURN:
-        /* 强制左转分支 */
-        g_dist_left = 500U;
-        g_dist_right = 200U;
-        break;
+    case STATE_PUSH_BACKWARD:
+      if (g_forward_progress_mm < g_target_forward_mm)
+      {
+        g_forward_progress_mm += 20U;
+      }
+      break;
 
-     case STATE_TURN_LEFT_180:
-    if ((HAL_GetTick() - state_tick) > 300U)
-    {
-      EnterState(STATE_EXIT_STRAIGHT);
-    }
-    break;
+    case STATE_RETURN_TURN_LEFT_180:
+      if ((HAL_GetTick() - state_tick) > 300U)
+      {
+        EnterState(STATE_DONE);
+      }
+      break;
 
-  case STATE_TURN_RIGHT_180:
-    if ((HAL_GetTick() - state_tick) > 300U)
-    {
-      EnterState(STATE_EXIT_STRAIGHT);
-    }
-    break;
-
-      case STATE_EXIT_STRAIGHT:
-        if ((HAL_GetTick() - state_tick) > 300U)
-        {
-          g_exit_confirmed = 1U;
-        }
-        break;
-
-      case STATE_RELEASE:
-        if ((HAL_GetTick() - state_tick) < 50U)
-        {
-          g_servo_busy = 1U;
-        }
-        else if ((HAL_GetTick() - state_tick) >
-  300U)
-        {
-          g_servo_busy = 0U;
-          g_servo_cmd = SERVO_CMD_NONE;
-        }
-        break;
-
-      case STATE_DONE:
-      case STATE_ERROR:
-      default:
-        break;
-    }
+    case STATE_DONE:
+    case STATE_ERROR:
+    default:
+      break;
   }
-  
-  /* ===== 状态机逻辑测试桩 END ===== */
-  #endif
+}
+#endif
+
 void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
 {
   if (huart->Instance == USART3)
@@ -1028,10 +1256,16 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
     {
       Size = VISION_RX_BUF_SIZE;
     }
+
+#if ROBOT_SM_DEBUG_PRINT
+    printf("[UART3_IRQ] size=%u\r\n", Size);
+#endif
+
     s_vision_rx_size = Size;
     s_vision_rx_ready = 1U;
   }
 }
+
 static const char *Robot_StateName(RobotState_t state)
 {
   switch (state)
@@ -1041,11 +1275,12 @@ static const char *Robot_StateName(RobotState_t state)
     case STATE_LOCK_TARGET:       return "LOCK_TARGET";
     case STATE_FORWARD_TO_TARGET: return "FORWARD_TO_TARGET";
     case STATE_GRAB_CLOSE:        return "GRAB_CLOSE";
-    case STATE_DECIDE_TURN:       return "DECIDE_TURN";
     case STATE_TURN_LEFT_180:     return "TURN_LEFT_180";
-    case STATE_TURN_RIGHT_180:    return "TURN_RIGHT_180";
     case STATE_EXIT_STRAIGHT:     return "EXIT_STRAIGHT";
     case STATE_RELEASE:           return "RELEASE";
+    case STATE_PUSH_FORWARD:      return "PUSH_FORWARD";
+    case STATE_PUSH_BACKWARD:     return "PUSH_BACKWARD";
+    case STATE_RETURN_TURN_LEFT_180: return "RETURN_TURN_LEFT_180";
     case STATE_DONE:              return "DONE";
     case STATE_ERROR:             return "ERROR";
     default:                      return "UNKNOWN";

@@ -17,8 +17,8 @@ static const float chassis_heading_limit = 12.0f;
 static const float chassis_heading_dir = -1.0f;
 static const float chassis_turn180_fast_angle = 150.0f;
 static const float chassis_turn180_stop_angle = 177.7f;
-static const int16_t chassis_turn180_fast_pwm = 30;
-static const int16_t chassis_turn180_slow_pwm = 18;
+static const int16_t chassis_turn180_fast_pwm = 35;
+static const int16_t chassis_turn180_slow_pwm = 24;
 
 static uint8_t s_heading_locked = 0;
 static float s_heading_target_yaw = 0.0f;
@@ -324,7 +324,10 @@ uint8_t Chassis_RunTurnRight180(void)
 
     delta_yaw = Chassis_NormalizeAngle(fAngle[2] - s_turn180_start_yaw);
     abs_delta_yaw = Chassis_AbsFloat(delta_yaw);
-
+ printf("[TURN_R] start=%.2f yaw=%.2f delta=%.2f abs=%.2f\r\n",s_turn180_start_yaw,
+         fAngle[2],
+         delta_yaw,
+         abs_delta_yaw);
     if (abs_delta_yaw < chassis_turn180_fast_angle)
     {
         Chassis_TurnRight_OpenLoop(chassis_turn180_fast_pwm);

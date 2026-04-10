@@ -1,7 +1,7 @@
 car\freertos.o: ../Core/Src/freertos.c
 car\freertos.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/FreeRTOS.h
-car\freertos.o: D:\Keil5\ARM\ARMCC\Bin\..\include\stddef.h
-car\freertos.o: D:\Keil5\ARM\ARMCC\Bin\..\include\stdint.h
+car\freertos.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stddef.h
+car\freertos.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdint.h
 car\freertos.o: ../Core/Inc/FreeRTOSConfig.h
 car\freertos.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/projdefs.h
 car\freertos.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/portable.h
@@ -43,9 +43,9 @@ car\freertos.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/timers.h
 car\freertos.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/queue.h
 car\freertos.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/semphr.h
 car\freertos.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/event_groups.h
-car\freertos.o: D:\Keil5\ARM\ARMCC\Bin\..\include\stdio.h
-car\freertos.o: D:\Keil5\ARM\ARMCC\Bin\..\include\string.h
-car\freertos.o: D:\Keil5\ARM\ARMCC\Bin\..\include\stdlib.h
+car\freertos.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdio.h
+car\freertos.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\string.h
+car\freertos.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdlib.h
 car\freertos.o: ../Core/Inc/encoder.h
 car\freertos.o: ../Core/Inc/usart.h
 car\freertos.o: ../Core/Inc/motor.h

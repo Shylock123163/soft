@@ -10,9 +10,7 @@ typedef enum {
     STATE_LOCK_TARGET,
     STATE_FORWARD_TO_TARGET,
     STATE_GRAB_CLOSE,
-    STATE_DECIDE_TURN,
     STATE_TURN_LEFT_180,
-    STATE_TURN_RIGHT_180,
     STATE_EXIT_STRAIGHT,
     STATE_RELEASE,
     STATE_DONE,
@@ -31,12 +29,6 @@ typedef enum {
     CLOSE_REASON_FRONT_SWITCH,
 } CloseReason_t;
 
-typedef enum {
-    TURN_DIR_NONE = 0,
-    TURN_DIR_LEFT,
-    TURN_DIR_RIGHT,
-} TurnDir_t;
-
 extern volatile RobotState_t g_robot_state;
 extern volatile uint8_t      g_bumper_left;
 extern volatile uint8_t      g_bumper_right;
@@ -45,10 +37,12 @@ extern volatile uint8_t      g_front_switch_triggered;
 extern volatile uint8_t      g_vision_detected;
 extern volatile uint8_t      g_vision_position;
 extern volatile uint16_t     g_vision_distance;
+extern volatile uint16_t     g_vision_smooth;
+extern volatile uint16_t     g_vision_raw;
+extern volatile uint16_t     g_vision_decision;
 extern volatile uint16_t     g_target_forward_mm;
 extern volatile uint16_t     g_forward_progress_mm;
 extern volatile CloseReason_t g_close_reason;
-extern volatile TurnDir_t     g_turn_dir;
 extern volatile uint16_t     g_dist_left;
 extern volatile uint16_t     g_dist_top;
 extern volatile uint16_t     g_dist_front;

@@ -1,6 +1,6 @@
 car\hwt101.o: HWT101.c
 car\hwt101.o: HWT101.h
-car\hwt101.o: D:\Keil5\ARM\ARMCC\Bin\..\include\stdint.h
+car\hwt101.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdint.h
 car\hwt101.o: ../Core/Inc/i2c.h
 car\hwt101.o: ../Core/Inc/main.h
 car\hwt101.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal.h
@@ -16,7 +16,7 @@ car\hwt101.o: ../Drivers/CMSIS/Include/cmsis_armcc.h
 car\hwt101.o: ../Drivers/CMSIS/Device/ST/STM32F1xx/Include/system_stm32f1xx.h
 car\hwt101.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal.h
 car\hwt101.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy/stm32_hal_legacy.h
-car\hwt101.o: D:\Keil5\ARM\ARMCC\Bin\..\include\stddef.h
+car\hwt101.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stddef.h
 car\hwt101.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_rcc_ex.h
 car\hwt101.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_gpio.h
 car\hwt101.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_gpio_ex.h
@@ -32,6 +32,6 @@ car\hwt101.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_tim.h
 car\hwt101.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_tim_ex.h
 car\hwt101.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_uart.h
 car\hwt101.o: wit_c_sdk.h
-car\hwt101.o: D:\Keil5\ARM\ARMCC\Bin\..\include\stdio.h
-car\hwt101.o: D:\Keil5\ARM\ARMCC\Bin\..\include\string.h
+car\hwt101.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdio.h
+car\hwt101.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\string.h
 car\hwt101.o: REG.h

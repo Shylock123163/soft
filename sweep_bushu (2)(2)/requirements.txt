@@ -1,0 +1,6 @@
+ultralytics>=8.3.89
+opencv-python>=4.8.0
+flask>=3.1.0
+PyYAML>=6.0
+rknn-toolkit-lite2
+pyserial>=3.5

@@ -1,0 +1,72 @@
+server:
+  host: 0.0.0.0
+  port: 5007
+
+camera:
+  source: /dev/video0
+  width: 640
+  height: 480
+  fps: 30
+  fourcc: MJPG
+
+model:
+  path: ./test2-rk3588.rknn
+  task: classify
+  imgsz: 224
+  device: ""
+  class_names:
+    - clean
+    - clutter
+  clutter_class_name: clutter
+  threshold_on: 0.62
+  threshold_off: 0.42
+
+filter:
+  enabled: true
+  initial_value: 0.50
+  process_noise: 0.008
+  measurement_noise: 0.08
+
+fast_control:
+  enabled: true
+  raw_threshold_on: 0.38
+  raw_threshold_off: 0.22
+  min_consecutive_on: 1
+  hold_ms: 140
+
+runtime:
+  infer_interval_ms: 60
+
+serial:
+  enabled: true
+  port: /dev/ttyUSB0
+  target_uart: USART3
+  auto_candidates:
+    - /dev/ttyUSB0
+    - /dev/ttyS3
+    - /dev/ttyAMA3
+    - /dev/ttyTHS3
+    - /dev/ttyFIQ0
+    - /dev/ttyACM0
+  baud: 115200
+  timeout: 0.2
+  reconnect_interval_s: 2.0
+  mcu_timeout_ms: 1200
+  send_interval_ms: 40
+  heartbeat_interval_ms: 250
+  queue_poll_ms: 20
+  send_on_change: true
+  immediate_state_change: true
+  prefer_quick_state: true
+  protocol: sweep_v1
+  prefix: $SWEEP
+
+roi:
+  x1: 0.25
+  y1: 0.30
+  x2: 0.75
+  y2: 0.95
+
+display:
+  draw_roi: true
+  jpeg_quality: 80
