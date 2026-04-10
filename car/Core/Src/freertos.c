@@ -31,6 +31,28 @@
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
+/* 比赛调参接口：舵机和串口/视觉参数放最前面，比赛时优先改这里 */
+volatile uint16_t g_vision_detect_min_count = 2U;
+volatile uint16_t g_vision_raw_trigger = 380U;
+volatile uint16_t g_vision_smooth_trigger = 550U;
+volatile uint16_t g_vision_decision_trigger = 600U;
+volatile uint16_t g_push_distance_divisor = 2U;
+volatile uint16_t g_push_distance_min_mm = 50U;
+volatile uint16_t g_servo_open_angle = 31U;
+volatile uint16_t g_servo_close_angle = 165U;
+/*
+ * g_vision_detect_min_count:
+ *   1 = 更灵敏，更容易触发；2 = 默认；3 = 更稳，但更容易错过
+ * g_vision_raw_trigger / g_vision_smooth_trigger / g_vision_decision_trigger:
+ *   数值越小越松，越大越严
+ *   推荐先调 detect_min_count，再调 decision_trigger，最后微调 raw/smooth
+ * g_push_distance_divisor:
+ *   推出距离 = 本次抓取前进距离 / divisor，默认 2 表示一半
+ * g_push_distance_min_mm:
+ *   推出距离下限，避免一半后太短
+ * g_servo_open_angle / g_servo_close_angle:
+ *   爪子张开/闭合角度；当前把 open 从 32 下调到 31，减少释放后卡住风险
+ */
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
@@ -71,28 +93,6 @@
 
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN Variables */
-/* 比赛调参接口：以后优先只改这里 */
-volatile uint16_t g_vision_detect_min_count = 2U;
-volatile uint16_t g_vision_raw_trigger = 380U;
-volatile uint16_t g_vision_smooth_trigger = 550U;
-volatile uint16_t g_vision_decision_trigger = 600U;
-volatile uint16_t g_push_distance_divisor = 2U;
-volatile uint16_t g_push_distance_min_mm = 50U;
-volatile uint16_t g_servo_open_angle = 31U;
-volatile uint16_t g_servo_close_angle = 165U;
-/*
- * g_vision_detect_min_count:
- *   1 = 更灵敏，更容易触发；2 = 默认；3 = 更稳，但更容易错过
- * g_vision_raw_trigger / g_vision_smooth_trigger / g_vision_decision_trigger:
- *   数值越小越松，越大越严
- *   推荐先调 detect_min_count，再调 decision_trigger，最后微调 raw/smooth
- * g_push_distance_divisor:
- *   推出距离 = 本次抓取前进距离 / divisor，默认 2 表示一半
- * g_push_distance_min_mm:
- *   推出距离下限，避免一半后太短
- * g_servo_open_angle / g_servo_close_angle:
- *   爪子张开/闭合角度；当前把 open 从 32 下调到 31，减少释放后卡住风险
- */
 volatile int g_enc1 = 0;
 volatile int g_enc2 = 0;
 volatile int g_enc3 = 0;
