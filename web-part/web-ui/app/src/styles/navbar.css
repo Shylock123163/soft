@@ -12,6 +12,12 @@
   background: var(--bg);
   backdrop-filter: var(--blur);
   border-bottom: 1px solid rgba(234,234,239,0.08);
+  animation: navbar-slide-in 0.5s ease-out;
+}
+
+@keyframes navbar-slide-in {
+  from { transform: translateY(-100%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
 }
 
 .navbar-brand {
@@ -19,6 +25,11 @@
   font-weight: 700;
   letter-spacing: 0.1em;
   color: var(--bg-light);
+  transition: text-shadow var(--transition);
+}
+
+.navbar-brand:hover {
+  text-shadow: 0 0 12px rgba(156,246,255,0.4);
 }
 
 .navbar-links {
