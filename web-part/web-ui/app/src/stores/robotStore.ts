@@ -13,7 +13,7 @@ type RobotState = {
 
 export const useRobotStore = create<RobotState>((set) => ({
   statusSummary:
-    '当前网页承担 OpenClaw 任务入口、状态解释与执行编排中枢，底层仍由上位机桥接到 STM32 执行。',
+    '当前网页承担暗域捕手任务入口、状态解释与执行编排中枢，底层仍由上位机桥接到 STM32 执行。',
   targetLabel: '遥控器 / 待确认',
   chassisMode: '低姿态巡航',
   gripMode: 'V 型夹持待命',

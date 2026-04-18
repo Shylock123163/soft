@@ -25,7 +25,7 @@ export function TaskInput({
     <section className="panel">
       <div className="panel-title">任务输入</div>
       <div className="panel-subtitle">
-        这里不是直接控电机，而是给 OpenClaw 下达高层任务。
+        这里不是直接控电机，而是给暗域捕手下达高层任务。
       </div>
       <div className="task-toolbar">
         <div className="session-chip">会话 {sessionId.slice(-8)}</div>
@@ -41,7 +41,7 @@ export function TaskInput({
           placeholder="例如：帮我找沙发底下的遥控器，夹到后退出并停在用户前方"
         />
         <button className="primary-button" type="button" onClick={onSend} disabled={chatBusy}>
-          {chatBusy ? 'OpenClaw 分析中…' : '发送到 OpenClaw'}
+          {chatBusy ? '分析中…' : '发送任务'}
         </button>
       </div>
       <div className="mode-row">

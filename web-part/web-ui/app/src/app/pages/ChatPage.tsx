@@ -37,7 +37,7 @@ export function ChatPage() {
         <div className="chat-main">
           <div className="chat-header">
             <Bot size={18} />
-            <span className="chat-title">OpenClaw</span>
+            <span className="chat-title">暗域捕手</span>
             <div className="chat-status">
               <span className={`status-dot ${serviceStatus ? 'online' : ''}`} />
               <span>{statusError || chat.taskStage}</span>

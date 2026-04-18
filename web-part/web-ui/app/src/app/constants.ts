@@ -1,5 +1,5 @@
 export const initialAssistantText =
-  '你好，我是 OpenClaw 任务中枢。你可以直接告诉我要找什么、怎么夹、夹到后如何退出。';
+  '你好，我是暗域捕手任务中枢。你可以直接告诉我要找什么、怎么夹、夹到后如何退出。';
 
 export const taskSuggestions = [
   '帮我找沙发底下的遥控器',

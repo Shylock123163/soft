@@ -13,7 +13,7 @@ export function useOpenClawChat() {
   ]);
   const [responseMeta, setResponseMeta] = useState<ResponseMeta>(emptyResponseMeta);
   const [currentTask, setCurrentTask] = useState('帮我找沙发底下的遥控器，夹到后退出并停在用户前方');
-  const [taskStage, setTaskStage] = useState('等待 OpenClaw 状态同步');
+  const [taskStage, setTaskStage] = useState('等待服务状态同步');
   const [sendError, setSendError] = useState('');
 
   function resetSession() {
@@ -38,7 +38,7 @@ export function useOpenClawChat() {
     setCurrentTask(trimmed);
     setChatBusy(true);
     setSendError('');
-    setTaskStage('任务已提交 / 等待 OpenClaw 返回');
+    setTaskStage('任务已提交 / 等待返回');
 
     try {
       const data = await sendOpenClawChat({
@@ -70,12 +70,12 @@ export function useOpenClawChat() {
             : '任务已回复 / 等待后续动作',
       );
     } catch (error) {
-      const msg = error instanceof Error ? error.message : 'OpenClaw 请求失败';
+      const msg = error instanceof Error ? error.message : '请求失败';
       setSendError(msg);
       setTaskStage('任务发送失败');
       setChatItems((prev) => [
         ...prev,
-        { role: 'system', text: `OpenClaw 后端暂时不可用：${msg}` },
+        { role: 'system', text: `后端暂时不可用：${msg}` },
       ]);
     } finally {
       setChatBusy(false);

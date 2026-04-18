@@ -19,7 +19,7 @@ export function useOpenClawStatus(intervalMs = 15000) {
         }
       } catch (error) {
         if (controller.signal.aborted) return;
-        setStatusError(error instanceof Error ? error.message : 'OpenClaw 状态获取失败');
+        setStatusError(error instanceof Error ? error.message : '状态获取失败');
       }
     }
 

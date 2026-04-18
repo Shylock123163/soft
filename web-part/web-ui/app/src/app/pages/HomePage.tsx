@@ -4,7 +4,7 @@ import '@/styles/home.css';
 
 const features = [
   { to: '/monitor', icon: Monitor, title: '监控室', desc: '3D 设备视图与实时状态' },
-  { to: '/chat', icon: MessageSquare, title: 'OpenClaw 对话', desc: '自然语言任务下发' },
+  { to: '/chat', icon: MessageSquare, title: '智能对话', desc: '自然语言任务下发' },
   { to: '/about', icon: Info, title: '关于项目', desc: '技术栈与设计说明' },
 ];
 
@@ -53,7 +53,7 @@ export function HomePage() {
             <div className="flip-card">
               <div className="flip-front">
                 <img src={bgUrl} alt="机器人" />
-                <h3>智能巡拢机器人</h3>
+                <h3>暗域捕手</h3>
               </div>
               <div className="flip-back">
                 <h3>核心参数</h3>
@@ -61,7 +61,7 @@ export function HomePage() {
                 <p>夹持：V 型夹持机构</p>
                 <p>传感：激光测距 + 补光</p>
                 <p>通信：WiFi + 串口桥接</p>
-                <p>上层：OpenClaw 任务理解</p>
+                <p>上层：云端任务理解</p>
               </div>
             </div>
           </div>
