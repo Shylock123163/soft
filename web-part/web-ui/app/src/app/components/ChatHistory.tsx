@@ -13,16 +13,13 @@ export function ChatHistory({ chatItems }: Props) {
   }, [chatItems.length]);
 
   return (
-    <section className="panel">
-      <div className="panel-title">对话记录</div>
-      <div className="chat-list">
-        {chatItems.map((item, index) => (
-          <div className={`chat-item chat-${item.role}`} key={`${item.role}-${index}`}>
-            {item.text}
-          </div>
-        ))}
-        <div ref={bottomRef} />
-      </div>
-    </section>
+    <div className="chat-list">
+      {chatItems.map((item, index) => (
+        <div className={`chat-item chat-${item.role}`} key={`${item.role}-${index}`}>
+          {item.text}
+        </div>
+      ))}
+      <div ref={bottomRef} />
+    </div>
   );
 }

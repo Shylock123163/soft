@@ -20,47 +20,27 @@ class SceneErrorBoundary extends Component<{ children: ReactNode }, { hasError: 
 
   render() {
     if (this.state.hasError) {
-      return (
-        <div className="scene-fallback-card">
-          <strong>3D 主视图区已切到安全模式</strong>
-          <span>当前设备或浏览器 WebGL 渲染不稳定，页面主体功能不受影响。</span>
-          <p>你仍然可以继续使用任务输入、OpenClaw 对话、状态查看和手动控制区。</p>
-        </div>
-      );
+      return <div style={{ display: 'grid', placeItems: 'center', height: '100%', color: '#9cf6ff', fontSize: 14 }}>WebGL 不可用，对话功能不受影响</div>;
     }
     return this.props.children;
   }
 }
 
 export function ScenePanel() {
-  const [sceneMounted, setSceneMounted] = useState(false);
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    const timer = window.setTimeout(() => setSceneMounted(true), 250);
-    return () => window.clearTimeout(timer);
+    const t = window.setTimeout(() => setReady(true), 200);
+    return () => window.clearTimeout(t);
   }, []);
 
   return (
-    <section className="scene-panel panel">
-      <div className="panel-title">3D 主视图区</div>
-      <div className="panel-subtitle">
-        react-three-fiber + drei + postprocessing 承载设备姿态与后续数字孪生。
-      </div>
-      <div className="scene-wrap">
-        <SceneErrorBoundary>
-          {sceneMounted ? (
-            <Suspense fallback={<div className="scene-loading">正在加载机器人 3D 主视图区…</div>}>
-              <RobotScene />
-            </Suspense>
-          ) : (
-            <div className="scene-fallback-card">
-              <strong>3D 主视图区准备中</strong>
-              <span>页面主功能已先加载，3D 区块会在空闲时延后挂载，避免整页卡死。</span>
-              <p>如果当前设备性能较弱，这个区域会自动保持轻量模式。</p>
-            </div>
-          )}
-        </SceneErrorBoundary>
-      </div>
-    </section>
+    <SceneErrorBoundary>
+      {ready ? (
+        <Suspense fallback={<div style={{ display: 'grid', placeItems: 'center', height: '100%', color: '#9cf6ff', fontSize: 13 }}>加载中…</div>}>
+          <RobotScene />
+        </Suspense>
+      ) : null}
+    </SceneErrorBoundary>
   );
 }

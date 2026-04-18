@@ -18,8 +18,7 @@ export default defineConfig({
       output: {
         manualChunks: {
           react: ['react', 'react-dom', 'zustand'],
-          three: ['three', '@react-three/fiber', '@react-three/drei', '@react-three/postprocessing', 'postprocessing'],
-          arwes: ['@arwes/react']
+          three: ['three', '@react-three/fiber', '@react-three/drei']
         }
       }
     }
