@@ -69,6 +69,65 @@
   min-height: 0;
 }
 
+/* Camera Feed */
+.monitor-views {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  min-height: 0;
+}
+
+.monitor-camera {
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid rgba(234,234,239,0.06);
+  min-height: 0;
+}
+
+.camera-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  font-size: 12px;
+  color: rgba(234,234,239,0.5);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  border-bottom: 1px solid rgba(234,234,239,0.06);
+}
+
+.camera-feed {
+  flex: 1;
+  position: relative;
+  background: #050505;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.camera-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.camera-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: rgba(234,234,239,0.25);
+  font-size: 13px;
+  pointer-events: none;
+}
+
+.camera-video:not([src=""]) + .camera-overlay {
+  display: none;
+}
+
 .monitor-detail {
   flex-shrink: 0;
   padding: 20px 24px;
@@ -129,4 +188,6 @@
     border-bottom: 1px solid rgba(234,234,239,0.08);
   }
   .monitor-sidebar-item { white-space: nowrap; }
+  .monitor-views { grid-template-columns: 1fr; }
+  .monitor-camera { border-right: none; border-bottom: 1px solid rgba(234,234,239,0.06); min-height: 30vh; }
 }

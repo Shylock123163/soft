@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Cpu, GripVertical, Radio, Camera, Wifi, Battery } from 'lucide-react';
+import { Cpu, GripVertical, Radio, Camera, Wifi, Battery, VideoOff } from 'lucide-react';
 import { useRobotStore } from '@/stores/robotStore';
 import { useOpenClawStatus } from '@/app/hooks/useOpenClawStatus';
 import { ScenePanel } from '@/app/components/ScenePanel';
@@ -77,8 +77,27 @@ export function MonitorPage() {
       </aside>
       <div className="monitor-content">
         <div className="monitor-header">{modules.find(m => m.id === active)?.label} 状态</div>
-        <div className="monitor-scene">
-          <ScenePanel />
+        <div className="monitor-views">
+          <div className="monitor-camera">
+            <div className="camera-label"><Camera size={14} /> 摄像头图传</div>
+            <div className="camera-feed">
+              <video
+                className="camera-video"
+                src={`${import.meta.env.BASE_URL}demo-feed.mp4`}
+                autoPlay
+                loop
+                muted
+                playsInline
+              />
+              <div className="camera-overlay">
+                <VideoOff size={32} />
+                <span>等待视频源接入</span>
+              </div>
+            </div>
+          </div>
+          <div className="monitor-scene">
+            <ScenePanel />
+          </div>
         </div>
         <div className="monitor-detail">
           <table className="status-table">
