@@ -34,11 +34,11 @@
 
 主目录：
 
-- `vision-server-part/lubancat-deploy/`
-- `vision-server-part/sweep_server/`
-- `vision-server-part/sweep_rknn/`
-- `vision-server-part/sweep_cat/`
-- `vision-server-part/wall_line_cat/`
+- `vision-server-part/deploy/lubancat-deploy/`
+- `vision-server-part/training/sweep_server/`
+- `vision-server-part/model-export/sweep_rknn/`
+- `vision-server-part/data-collection/clutter-classification/`
+- `vision-server-part/data-collection/wall-line-distance/`
 
 职责：
 
@@ -63,10 +63,6 @@
 ## 当前推荐阅读顺序
 
 1. `web-part/web-ui/WEB_UI_SUMMARY.md`
-2. `vision-server-part/lubancat-deploy/README.md`
-3. `vision-server-part/sweep_server/README.md`
+2. `vision-server-part/deploy/lubancat-deploy/README.md`
+3. `vision-server-part/training/sweep_server/README.md`
 4. `stm32-part/car/VISION_SERIAL_INTEGRATION.md`
-
-## 说明
-
-根目录旧的 `web-ui/` 是本机因前端进程占用保留的临时副本，已加入忽略；正式提交和后续维护以 `web-part/web-ui/` 为准。
