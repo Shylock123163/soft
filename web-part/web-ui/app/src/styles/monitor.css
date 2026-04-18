@@ -45,9 +45,14 @@
 .monitor-sidebar-item.active {
   color: var(--bg-light);
   background: rgba(234,234,239,0.08);
-  transform: scaleX(1.03);
   transform-origin: left;
   border-left: 3px solid var(--accent);
+  animation: sidebar-active 0.3s ease-out;
+}
+
+@keyframes sidebar-active {
+  from { opacity: 0.6; transform: translateX(-4px); }
+  to { opacity: 1; transform: translateX(0); }
 }
 
 .monitor-sidebar-item svg {

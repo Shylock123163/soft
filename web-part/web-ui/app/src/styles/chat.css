@@ -54,6 +54,12 @@
 .status-dot.online {
   background: var(--accent-green);
   box-shadow: 0 0 6px rgba(79,240,208,0.5);
+  animation: dot-pulse 2s ease-in-out infinite;
+}
+
+@keyframes dot-pulse {
+  0%, 100% { box-shadow: 0 0 6px rgba(79,240,208,0.5); }
+  50% { box-shadow: 0 0 12px rgba(79,240,208,0.8); }
 }
 
 .chat-toolbar {
