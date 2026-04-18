@@ -1,0 +1,21 @@
+{
+  "name": "smart-gathering-robot-deploy",
+  "version": "0.1.0",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "app:dev": "npm --prefix app run dev",
+    "app:build": "npm --prefix app run build",
+    "app:preview": "npm --prefix app run preview",
+    "openclaw:start": "node openclaw-server.js",
+    "openclaw:dev": "node openclaw-server.js",
+    "webhook:start": "node webhook.js",
+    "webhook:dev": "node webhook.js",
+    "cf:deploy": "wrangler deploy",
+    "cf:dev": "wrangler dev"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "wrangler": "^4.83.0"
+  }
+}

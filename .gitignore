@@ -28,4 +28,4 @@ dist/
 *.bin
 
 # Local legacy frontend copy kept only to avoid file-lock issues on this machine
-web-ui/
+/web-ui/
