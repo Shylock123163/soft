@@ -2,7 +2,7 @@
 
 ## 1. 目标
 
-本项目后续如果新增“智能机器人网页”或“3D 控制台网页”，前端默认遵循以下约束，避免技术栈来回切换、页面风格失控或重复造轮子。
+本项目后续如果新增”智能机器人网页”或”3D 控制台网页”，前端默认遵循以下约束，避免技术栈来回切换、页面风格失控或重复造轮子。
 
 ## 2. 前端技术栈约定
 
@@ -10,75 +10,73 @@
 
 - 3D 场景统一优先使用 `@react-three/fiber`
 - 常用 3D 辅助能力优先使用 `@react-three/drei`
-- 3D 后处理默认使用 `@react-three/postprocessing`
 - 非必要不要直接用原生 `three.js` 手写整套场景
 - 只有在 `react-three-fiber` 明显不适合时，才允许补充原生 `three.js`
+- 后处理（Bloom/ToneMapping 等）按需引入 `@react-three/postprocessing`，当前未安装
 
 ### 2.2 普通页面 UI
 
 - 普通控制面板、状态卡片、日志区、按钮区使用普通 React DOM
-- 控制台视觉壳层默认优先使用 `Arwes`
-- 不要把整页控制台都做成纯 3D UI
-- 页面结构优先采用：
-  - 状态栏
-  - 控制面板
-  - 3D 主视图区
-  - 日志/传感器信息区
+- 控制台视觉风格使用自定义 CSS 设计系统（暗色毛玻璃 + 新拟态），灵感来源于游戏 HUD
+- 两色系统：`rgba(0,0,0,0.6)` 暗透明 + `rgb(234,234,239)` 浅灰白
+- 动画使用 `framer-motion`
+- 图标使用 `lucide-react`
+- 多页面路由使用 `react-router-dom`
 
 ### 2.3 状态管理
 
 - 全局状态优先使用 `zustand`
 - 不要为简单状态引入过重状态管理方案
 
-### 2.4 调试工具
+### 2.4 风格约束
 
-- 参数调试优先考虑 `leva`
-- 常见 3D 相机、灯光、轨道控制、网格、加载器优先从 `@react-three/drei` 中选
-- 常见发光、景深、Bloom、Noise、Vignette、色调映射等视觉增强优先从 `@react-three/postprocessing` 中选
-
-### 2.5 风格约束
-
-- `Arwes` 用来做控制台框体、HUD、扫描线、科技感排版和交互外观
-- 不直接照搬 `Arwes` 默认模板，要保留机器人控制台的信息密度和工程感
-- `@react-three/postprocessing` 只用于增强 3D 主视图区，不允许把实时状态信息做得难读
+- 自定义 CSS 用来做控制台框体、毛玻璃面板、新拟态阴影和交互外观
+- 不直接照搬任何模板默认样式，要保留机器人控制台的信息密度和工程感
+- 后处理只用于增强 3D 主视图区，不允许把实时状态信息做得难读
 - 后处理默认轻量，优先可读性，再考虑氛围感
 
-## 3. 推荐前端结构
-
-如果单独新建机器人网页前端，推荐结构如下：
+## 3. 当前前端结构
 
 ```text
-frontend/
-├─ src/
-│  ├─ app/
+app/src/
+├─ app/
+│  ├─ App.tsx              (路由壳)
+│  ├─ pages/
+│  │  ├─ HomePage.tsx      (视差首页)
+│  │  ├─ MonitorPage.tsx   (监控室)
+│  │  ├─ ChatPage.tsx      (对话页)
+│  │  ├─ LoginPage.tsx     (登录/注册)
+│  │  └─ AboutPage.tsx     (关于)
 │  ├─ components/
-│  │  ├─ layout/
-│  │  ├─ control/
-│  │  ├─ status/
-│  │  ├─ hud/
-│  │  └─ scene/
-│  ├─ stores/
-│  ├─ lib/
-│  │  ├─ arwes/
-│  │  └─ postprocessing/
+│  │  ├─ Navbar.tsx        (顶部导航 + 汉堡菜单)
+│  │  ├─ FootNav.tsx       (浮动按钮)
+│  │  ├─ ChatHistory.tsx   (对话记录)
+│  │  └─ ScenePanel.tsx    (3D 场景容器)
 │  ├─ hooks/
-│  └─ types/
+│  │  ├─ useOpenClawStatus.ts
+│  │  └─ useOpenClawChat.ts
+│  ├─ types.ts
+│  └─ constants.ts
+├─ components/
+│  └─ scene/
+│     └─ RobotScene.tsx    (3D 机器人模型)
+├─ stores/
+│  └─ robotStore.ts        (zustand)
+├─ lib/
+│  └─ api/
+│     ├─ endpoints.ts
+│     └─ openclaw.ts
+├─ styles/
+│  ├─ index.css            (全局 + CSS 变量)
+│  ├─ navbar.css
+│  ├─ home.css
+│  ├─ monitor.css
+│  ├─ chat.css
+│  ├─ login.css
+│  └─ about.css
+└─ types/
+   └─ global.d.ts
 ```
-
-其中：
-
-- `components/scene/`
-  - 放 `react-three-fiber` 相关场景组件
-- `components/control/`
-  - 放按钮、参数控制、模式切换
-- `components/status/`
-  - 放传感器、串口、日志、任务状态
-- `components/hud/`
-  - 放 `Arwes` 风格的面板壳、标题条、边框、提示组件
-- `stores/`
-  - 放 `zustand` 状态
-- `lib/postprocessing/`
-  - 放 3D 后处理组合与效果预设
 
 ## 4. 与现有机器人系统的边界
 
@@ -97,7 +95,7 @@ frontend/
 
 ## 5. 页面设计原则
 
-- 页面优先做成“机器人控制台”，不是普通官网
+- 页面优先做成”机器人控制台”，不是普通官网
 - 重点突出：
   - 实时状态
   - 控制入口
@@ -108,58 +106,29 @@ frontend/
   - 稳定
   - 信息密度适中
   - 避免花哨但无信息量的装饰
-  - 用 `Arwes` 做有边界的科技感，而不是堆满荧光装饰
+  - 用毛玻璃 + 新拟态做有边界的科技感，而不是堆满荧光装饰
 
-## 6. 推荐默认页面布局
+## 6. 当前页面路由
 
-推荐默认布局：
+| 路由 | 页面 | 说明 |
+|------|------|------|
+| `/` | HomePage | 视差滚动首页，功能入口卡片，3D 翻转卡片，旋转环入口 |
+| `/monitor` | MonitorPage | 侧边栏设备选择 + 摄像头图传 + 3D 机器人 + 状态表格 |
+| `/chat` | ChatPage | OpenClaw 对话 + 快捷任务侧栏 |
+| `/login` | LoginPage | 3D 翻转登录/注册表单 |
+| `/about` | AboutPage | 项目介绍、技术栈、架构说明 |
 
-```text
-Header
-├─ 设备在线状态
-├─ 当前模式
-└─ 急停 / 启停
+## 7. 当前依赖
 
-Left Panel
-├─ 手动控制
-├─ 参数调整
-└─ 模式切换
+| 包 | 用途 |
+|---|------|
+| `react` / `react-dom` | UI 框架 |
+| `react-router-dom` | 多页面路由 |
+| `three` / `@react-three/fiber` / `@react-three/drei` | 3D 场景 |
+| `zustand` | 状态管理 |
+| `framer-motion` | 动画 |
+| `lucide-react` | 图标 |
 
-Center
-└─ 3D 场景（react-three-fiber）
+## 8. 一句话约定
 
-Right Panel
-├─ 传感器状态
-├─ 串口状态
-└─ AI/视觉判断结果
-
-Bottom
-└─ 日志 / 最近动作 / 调试信息
-```
-
-## 7. 默认开发原则
-
-- 优先复用成熟开源 UI 壳子，不盲目从零写页面
-- 3D 相关统一走 `react-three-fiber`
-- 控制台壳层默认优先 `Arwes`
-- 3D 视觉增强默认优先 `@react-three/postprocessing`
-- 业务 UI 保持普通 React 组件化开发
-- 后端接口先稳定，再叠加视觉效果
-- 不为了“炫”而牺牲控制台可读性
-
-## 8. 协作说明
-
-如果后续由 AI 助手继续开发前端，默认按本文件执行：
-
-- 优先使用 `@react-three/fiber`
-- 优先使用 `Arwes` 做控制台风格层
-- 优先使用 `@react-three/postprocessing` 做 3D 效果层
-- 不擅自切换到其他 3D 主方案
-- 不把全页面都做成三维交互
-- 先保证控制台可用，再做视觉增强
-
-## 9. 一句话约定
-
-本项目的机器人网页前端默认策略是：
-
-**普通控制台 UI 用 React + `Arwes`，3D 主视图区用 `react-three-fiber`，视觉增强优先 `@react-three/postprocessing`，状态管理优先 `zustand`，网页逻辑挂在上位机层，不直接侵入 STM32 固件层。**
+**普通控制台 UI 用 React + 自定义暗色毛玻璃 CSS，3D 主视图区用 `react-three-fiber`，动画用 `framer-motion`，图标用 `lucide-react`，状态管理用 `zustand`，多页面用 `react-router-dom`，网页逻辑挂在上位机层，不直接侵入 STM32 固件层。**

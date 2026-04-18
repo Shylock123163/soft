@@ -64,19 +64,26 @@
 
 ## 推荐脚本
 
-在 `web-ui/` 下：
-
-```bash
-npm run app:build
-npm run webhook:start
-npm run cf:deploy
-```
-
 在 `web-ui/app/` 下：
 
 ```bash
-npm run dev
-npm run build
+npm run dev       # 本地开发
+npm run build     # 生产构建
+npm run preview   # 预览构建产物
+```
+
+在 `web-ui/` 下：
+
+```bash
+node openclaw-server.js                          # 启动 OpenClaw 后端
+node webhook.js                                  # 启动 webhook
+npx wrangler deploy --config wrangler.toml       # 部署 Cloudflare Worker
+```
+
+或通过 PM2：
+
+```bash
+pm2 start pm2.ecosystem.config.cjs
 ```
 
 ## 建议 nginx 路由

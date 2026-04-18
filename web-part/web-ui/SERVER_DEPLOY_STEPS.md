@@ -116,7 +116,7 @@ nano /etc/nginx/sites-available/robot-web
 
 ```nginx
 location /sr/ {
-    alias /home/deploy/sr/web-ui/app/dist/;
+    alias /home/deploy/sr/web-part/web-ui/app/dist/;
     try_files $uri $uri/ /sr/index.html;
 }
 

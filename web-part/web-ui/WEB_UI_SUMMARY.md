@@ -2,17 +2,20 @@
 
 ## 1. 仓库大致结构
 
-当前 `C:\Users\zbl\Desktop\sr` 不是单一工程，而是一个“机器人控制 + 视觉采集/训练 + 鲁班猫部署”的组合仓库，主要分成这几块：
+当前 `sr` 不是单一工程，而是一个"机器人控制 + 视觉采集/训练 + 鲁班猫部署 + 网页前端"的组合仓库：
 
 - `soft/car/`
   - STM32 小车/机器人底层电控工程
   - 负责电机、舵机、串口、FreeRTOS 状态机等
 - `soft/sweep_bushu (2)(2)/`
   - 鲁班猫部署包
-  - 已经具备“网页实时检测 + 串口发给 STM32”的完整链路
+  - 已经具备"网页实时检测 + 串口发给 STM32"的完整链路
+- `web-part/web-ui/`
+  - 独立网页前端工作区
+  - React 18 + Vite 5 + TypeScript 多页面控制台
+  - OpenClaw 轻后端 + webhook + Cloudflare Worker
 - `sweep_server/`
   - 训练服务器上传包
-  - 负责数据集整理、训练、导出模型
 - `sweep_rknn/`
   - `pt -> RKNN` 导出与鲁班猫端 RKNN 网页检测
 - `sweep_cat/`
@@ -20,243 +23,118 @@
 - `wall_line_cat/`
   - 墙地交界线距离分类数据采集工程
 
-结论：这个仓库已经不是“从零开始加网页”，而是**本身已经有网页能力**，只是目前网页主要服务于视觉检测，不是像 OpenClaw 那样做成更完整的“机器人控制中台”。
+## 2. 当前网页前端（web-part/web-ui/app）
 
-## 2. 现有网页能力在哪里
+### 2.1 技术栈
 
-### 2.1 最基础的网页检测服务
+| 包 | 用途 |
+|---|------|
+| `react` / `react-dom` | UI 框架 |
+| `react-router-dom` | 多页面路由（basename="/sr"） |
+| `three` / `@react-three/fiber` / `@react-three/drei` | 3D 场景 |
+| `zustand` | 状态管理 |
+| `framer-motion` | 动画 |
+| `lucide-react` | 图标 |
 
-文件：
+### 2.2 页面路由
 
-- `sweep_server/server/web_detect.py`
+| 路由 | 页面 | 说明 |
+|------|------|------|
+| `/` | HomePage | 视差滚动首页，功能入口卡片，3D 翻转卡片，旋转环入口 |
+| `/monitor` | MonitorPage | 侧边栏设备选择 + 摄像头图传 + 3D 机器人 + 状态表格 |
+| `/chat` | ChatPage | OpenClaw 对话 + 快捷任务侧栏 |
+| `/login` | LoginPage | 3D 翻转登录/注册表单 |
+| `/about` | AboutPage | 项目介绍、技术栈、架构说明 |
 
-特征：
+### 2.3 视觉风格
 
-- 使用 `Flask`
-- 提供摄像头画面网页
-- 提供 `/api/status`
-- 支持 ROI 调整
-- 适合训练/验证阶段快速看模型效果
+- 暗色毛玻璃 + 新拟态（灵感来源于游戏 HUD）
+- 两色系统：`rgba(0,0,0,0.6)` 暗透明 + `rgb(234,234,239)` 浅灰白
+- `backdrop-filter: blur(8px) saturate(160%)`
+- 统一圆角 `10px`、新拟态 `box-shadow` 组合
+- 视差滚动背景、3D 翻转卡片、汉堡菜单侧边栏
 
-这是一个偏“实验验证”的网页版本。
+### 2.4 目录结构
 
-### 2.2 最适合继续扩展的现成入口
+```text
+app/src/
+├─ app/
+│  ├─ App.tsx              (路由壳)
+│  ├─ pages/               (5 个页面组件)
+│  ├─ components/          (Navbar, FootNav, ChatHistory, ScenePanel)
+│  ├─ hooks/               (useOpenClawStatus, useOpenClawChat)
+│  ├─ types.ts
+│  └─ constants.ts
+├─ components/scene/       (RobotScene 3D 模型)
+├─ stores/                 (zustand robotStore)
+├─ lib/api/                (endpoints, openclaw)
+├─ styles/                 (index/navbar/home/monitor/chat/login/about.css)
+└─ types/                  (global.d.ts)
+```
 
-文件：
+## 3. 后端服务
 
-- `soft/sweep_bushu (2)(2)/deploy_web_detect.py`
-- `soft/sweep_bushu (2)(2)/config.yaml`
-- `soft/sweep_bushu (2)(2)/start_web_detect.sh`
+### 3.1 OpenClaw 轻后端
 
-这是目前最成熟的一层，已经具备：
+- 文件：`openclaw-server.js`
+- 端口：`127.0.0.1:9012`
+- 职责：任务理解、NLP 意图检测、设备命令队列
+- 接口：`/api/openclaw/status`、`/chat`、`/recommend`、`/execute`、`/session/reset`、`/device/*`
 
-- RKNNLite 推理
-- Flask 网页
-- 摄像头实时画面
-- ROI 调整
-- 卡尔曼滤波 + 滞回阈值
-- 串口发送到 STM32
-- 串口状态显示
-- 开机自启动
+### 3.2 Webhook 自动部署
 
-对应 README 也写得很清楚：
+- 文件：`webhook.js`
+- 端口：`127.0.0.1:9010`
+- 路径：`/sr-webhook`
 
-- 网页端口：`5007`
-- 串口目标：`USART3`
-- 协议前缀：`$SWEEP`
+### 3.3 Cloudflare Worker + R2
 
-结论：如果你要给“智能机器人”加入类似 OpenClaw 的网页，**最应该从 `soft/sweep_bushu (2)(2)/deploy_web_detect.py` 这一层继续扩展**，而不是从 STM32 工程里硬做网页。
+- 文件：`workers/r2-assets.js`
+- 配置：`wrangler.toml`
+- 职责：图片/视频/模型等资产文件 API
 
-## 3. 当前机器人链路怎么跑
-
-从现有文档和代码看，当前链路是：
+## 4. 当前机器人链路
 
 ```text
 摄像头 / 鲁班猫视觉
-    -> Python 检测程序
-    -> 网页显示状态
+    -> Python 检测程序（deploy_web_detect.py）
     -> 串口协议 $SWEEP,...
     -> STM32 USART3
     -> 电控状态机执行
+
+网页前端
+    -> OpenClaw 后端（任务理解/策略生成）
+    -> 命令队列
+    -> 设备轮询执行
 ```
 
-也就是：
-
-- 上位机/鲁班猫负责“看”和“判断”
-- STM32 负责“执行”
-
-这和你现在做 OpenClaw 的思路其实很像：
-
-- 网页前端：负责交互
-- Python/Node 中间层：负责逻辑和协议转换
-- STM32：负责底层执行
-
-## 4. STM32 这层现在的角色
-
-关键文档：
-
-- `soft/car/VISION_SERIAL_INTEGRATION.md`
-
-关键信息：
-
-- `USART3` 是视觉输入口
-- 波特率 `115200`
-- 协议是 ASCII 文本帧，例如：
+## 5. 部署架构
 
 ```text
-$SWEEP,1,823,801,823,CLUTTER
+浏览器
+    -> VPS nginx
+        -> /            旧蝴蝶网页
+        -> /sr/         新智能巡拢家居机器人网页（app/dist）
+        -> /api/sr/openclaw/*    新项目 OpenClaw
+        -> /sr-webhook           新项目 webhook
+
+浏览器 / OpenClaw
+    -> Cloudflare Worker -> R2 资产桶
 ```
 
-STM32 当前并不依赖具体模型框架，它只关心串口协议字段。
+## 6. 当前进度
 
-这点非常重要：
+- ✅ 前端主工程建立（React + Vite + TypeScript）
+- ✅ 5 页面路由架构完成
+- ✅ 3D 机器人场景
+- ✅ OpenClaw 对话接口对接
+- ✅ 监控室（设备选择 + 摄像头图传 + 状态表格）
+- ✅ OpenClaw 轻后端 + webhook + Worker
+- 待做：接入真实视频流（当前用占位视频）
+- 待做：接入真实设备状态
+- 待做：开屏动画模块
+- 待做：图片转 3D 资产链路
 
-- 以后你换模型、换网页、换推理引擎
-- 只要网页后端最后仍然发相同或兼容协议
-- STM32 基本不用大改
+## 7. 一句话结论
 
-所以网页智能化应该尽量放在**上位机/鲁班猫层**，而不是直接塞进 `soft/car/`。
-
-## 5. 如果你要加“类似 OpenClaw 的智能网页”，最合理的落点
-
-### 方案建议
-
-优先在：
-
-- `soft/sweep_bushu (2)(2)/deploy_web_detect.py`
-
-这一层扩展出新的机器人网页能力。
-
-### 原因
-
-因为这一层已经有：
-
-- Web 服务
-- 摄像头画面
-- 实时状态
-- 串口联动
-- 配置文件
-- 后台线程结构
-
-也就是说你现在缺的不是“网页基础设施”，而是：
-
-- 更完整的控制面板
-- 更丰富的状态展示
-- 更智能的交互入口
-
-## 6. 可以怎么演进成更完整的智能机器人网页
-
-建议把现有网页从“视觉检测页”升级成“机器人控制页”，增加这几类能力：
-
-### 6.1 状态展示
-
-- 摄像头画面
-- 当前识别结果
-- 串口连接状态
-- STM32 在线状态
-- 当前模式/状态机阶段
-- 最近一条串口命令
-
-### 6.2 手动控制
-
-- 启动/停止
-- 模式切换
-- ROI 调整
-- 阈值调整
-- 串口开关
-- 调试参数下发
-
-### 6.3 智能助手层
-
-类似 OpenClaw 的思路，可以再加一个“智能助手/控制建议”区域，但建议放在上位机层，不要直接碰 STM32：
-
-- 用户输入自然语言
-- 后端把它转成结构化动作
-- 再转成串口协议或内部状态更新
-
-### 6.4 日志与回放
-
-- 最近识别结果
-- 最近串口发包
-- 最近模式切换
-- 异常信息
-
-## 7. 我对这个仓库的判断
-
-### 适合做网页扩展的部分
-
-- `soft/sweep_bushu (2)(2)/deploy_web_detect.py`
-  - 最适合直接改造成“机器人控制网页”
-
-### 不适合直接做网页的部分
-
-- `soft/car/`
-  - 这是电控固件，不适合承载网页逻辑
-
-### 数据与训练部分
-
-- `sweep_server/`
-- `sweep_rknn/`
-- `sweep_cat/`
-- `wall_line_cat/`
-
-这些更适合继续承担：
-
-- 采集
-- 训练
-- 模型导出
-- 部署支撑
-
-而不是直接做最终控制网页。
-
-## 8. 最推荐的技术路线
-
-如果你要给这个智能机器人加入“类似 OpenClaw 的网页”，我建议：
-
-1. 保留 STM32 当前串口协议层不动
-2. 以 `soft/sweep_bushu (2)(2)/deploy_web_detect.py` 为后端基础
-3. 先把现有 Flask 页面升级成“控制台网页”
-4. 再在这个网页上叠加：
-   - 实时状态
-   - 手动控制
-   - 参数配置
-   - 智能助手
-
-这样做的优点是：
-
-- 不破坏现有电控
-- 不影响现有视觉链路
-- 改动集中在上位机层
-- 后续更容易接 AI 助手
-
-## 9. 下一步建议
-
-我建议下一步不要直接分散修改多个目录，而是先做一个明确决策：
-
-### 推荐方向
-
-以 `soft/sweep_bushu (2)(2)/deploy_web_detect.py` 为基础，升级成统一机器人网页。
-
-### 推荐先做的第一页
-
-先做一个最小版页面，包含：
-
-- 视频画面
-- 检测状态
-- 串口状态
-- 手动启停
-- 阈值与 ROI 调整
-- 最近发送的协议文本
-
-### 第二阶段再加
-
-- 智能助手
-- 多轮控制建议
-- 模式面板
-- 日志面板
-
-## 10. 一句话结论
-
-这个仓库已经有网页基础，不需要从零做。
-
-如果你要给智能机器人加“类似 OpenClaw 的网页”，**最佳切入点不是 STM32 固件，而是鲁班猫/上位机这一层的 `deploy_web_detect.py`**；它已经天然具备扩展成“机器人智能控制网页”的结构。
+**`web-part/web-ui/` 已经是一套完整的 React 多页面机器人控制台，具备 3D 可视化、OpenClaw 对话、设备监控、摄像头图传等核心功能；下一步重点是接入真实后端数据源和完善资产链路。**

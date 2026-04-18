@@ -13,23 +13,19 @@
 
 ## 2. 当前目录现状
 
-当前 `C:\Users\zbl\Desktop\sr\web-ui` 目录已经包含：
+当前 `web-part/web-ui/` 目录包含：
 
-- `FRONTEND_GUIDE.md`
-  - 前端技术栈约束
-- `WEB_UI_SUMMARY.md`
-  - 对 `sr` 仓库整体网页接入点的总结
-- `robot.jpg`
-  - 当前机器人外观参考图
-  - 后续首页主视觉、3D 建模参考、设备卡片配图的基础素材
-- `splash-source/`
-  - 已下载的 `gamemcu/www-genshin` 源码
-  - 作为开屏动画参考/素材来源
-
-结论：
-
-- `web-ui/` 现在已经被确立为机器人网页前端工作区
-- `splash-source/` 只是参考和开屏模块来源，不应作为最终主业务工程直接长期开发
+- `app/` — React/Vite/TypeScript 前端主工程（5 页面路由）
+- `openclaw-server.js` — OpenClaw 任务后端（Node.js，端口 9012）
+- `webhook.js` — GitHub webhook 自动部署
+- `workers/r2-assets.js` — Cloudflare Worker 文件管理
+- `wrangler.toml` — Worker 配置
+- `pm2.ecosystem.config.cjs` — PM2 进程管理
+- `deploy.nginx.example.conf` — nginx 示例配置
+- `server.env.example` — 环境变量示例
+- `robot.jpg` — 机器人外观参考图
+- `splash-source/` — www-genshin 开屏参考（未集成）
+- 8 个 `.md` 文档
 
 ## 3. 当前整体架构思路
 
@@ -115,22 +111,23 @@
 
 ### 4.2 技术栈约定
 
-根据当前约束文档，前端默认采用：
+当前前端实际采用：
 
-- 普通 UI：React DOM
-- 控制台风格层：`Arwes`
-- 3D 场景：`@react-three/fiber`
-- 3D 辅助：`@react-three/drei`
-- 3D 后处理：`@react-three/postprocessing`
+- 普通 UI：React DOM + 自定义 CSS 设计系统
+- 视觉风格：暗色毛玻璃 + 新拟态（两色系统：`rgba(0,0,0,0.6)` + `rgb(234,234,239)`）
+- 3D 场景：`@react-three/fiber` + `@react-three/drei`
 - 状态管理：`zustand`
+- 动画：`framer-motion`
+- 图标：`lucide-react`
+- 路由：`react-router-dom`
 
 也就是说：
 
-- 控制台部分用普通 React 做
-- 控制台边框/HUD/信息面板优先复用 `Arwes`
+- 控制台部分用普通 React + 自定义暗色毛玻璃 CSS 做
 - 3D 区域单独用 `react-three-fiber`
-- 3D 氛围和视觉增强优先用 `@react-three/postprocessing`
+- 动画过渡用 `framer-motion`
 - 不把整页都做成纯 3D UI
+- 不使用 Arwes 或 postprocessing
 
 ### 4.3 网站围绕 OpenClaw 的职责
 
@@ -261,23 +258,18 @@ web-ui/app
 
 当前阶段不建议一下子同时做太多，而是按下面顺序推进：
 
-### 第一阶段
+### 第一阶段 ✅ 已完成
 
-建立真正的前端主工程，例如：
+建立前端主工程 `web-ui/app/`：
 
-```text
-web-ui/app/
-```
+- React 18 + Vite 5 + TypeScript 项目
+- 5 页面路由（首页/监控室/对话/登录/关于）
+- 接入 `@react-three/fiber` + `@react-three/drei`
+- 自定义暗色毛玻璃 CSS 设计系统
+- `framer-motion` 动画 + `lucide-react` 图标
+- `zustand` 状态管理
 
-完成：
-
-- React/Vite 项目初始化
-- 基础布局
-- 路由或主页面壳子
-- 接入 `Arwes` / `@react-three/fiber` / `@react-three/postprocessing`
-- 把 `robot.jpg` 先用于首页设备卡与主视觉区
-
-### 第二阶段
+### 第二阶段（待定）
 
 把 `splash-source` 抽成开屏模块：
 
@@ -285,22 +277,19 @@ web-ui/app/
 - 进入按钮
 - 动画结束回调
 
-### 第三阶段
+### 第三阶段 ✅ 已完成
 
-搭机器人控制台静态页面：
+机器人控制台页面：
 
-- 状态栏
-- 控制区
-- 3D 区
-- 日志区
-- `OpenClaw` 任务输入区
-- 当前任务阶段与决策解释区
+- MonitorPage：侧边栏设备选择 + 摄像头图传 + 3D 机器人 + 状态表格
+- ChatPage：OpenClaw 对话 + 快捷任务侧栏
+- HomePage：视差滚动 + 3D 翻转卡片 + 旋转环入口
 
 ### 第四阶段
 
 接现有 Python 后端：
 
-- 视频流
+- 视频流（当前用占位视频）
 - `/api/status`
 - 串口状态
 - 模式/参数控制
@@ -391,7 +380,6 @@ web-ui/app/
 
 - `@react-three/fiber`
 - `@react-three/drei`
-- `@react-three/postprocessing`
 
 来做：
 
@@ -400,7 +388,6 @@ web-ui/app/
 - 相机控制
 - 模型缩放与居中
 - 材质和阴影基础预览
-- 轻量 Bloom / AO / 色调增强
 
 不要一开始就做太复杂的建模编辑器，先把：
 
@@ -416,4 +403,4 @@ web-ui/app/
 
 当前网页项目的整体思路是：
 
-**以 `web-ui/` 作为独立前端工作区，先把 `www-genshin` 改造成开屏模块，再建设一个以 `OpenClaw` 为上层任务中枢的机器人控制台；前端负责任务输入、状态解释、3D 可视化与调试交互，后端继续复用 `sr` 现有 Python/鲁班猫桥接能力，STM32 保持底层执行角色，图片转 3D 则作为独立资产链路接入到控制台而不是直接侵入底层控制。**
+**以 `web-ui/` 作为独立前端工作区，建设一个以 `OpenClaw` 为上层任务中枢的机器人控制台（5 页面多路由架构）；前端负责任务输入、状态解释、3D 可视化与调试交互，采用自定义暗色毛玻璃 CSS + react-three-fiber + framer-motion 技术栈；后端继续复用 `sr` 现有 Python/鲁班猫桥接能力，STM32 保持底层执行角色，图片转 3D 则作为独立资产链路接入到控制台而不是直接侵入底层控制。**
