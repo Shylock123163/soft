@@ -6,8 +6,14 @@ import { MonitorPage } from '@/app/pages/MonitorPage';
 import { ChatPage } from '@/app/pages/ChatPage';
 import { LoginPage } from '@/app/pages/LoginPage';
 import { AboutPage } from '@/app/pages/AboutPage';
+import { SplashScreen } from '@/app/components/SplashScreen';
+import { useSplashStore } from '@/stores/splashStore';
 
 export function App() {
+  const splashDone = useSplashStore((s) => s.done);
+
+  if (!splashDone) return <SplashScreen />;
+
   return (
     <BrowserRouter basename="/sr">
       <Navbar />
