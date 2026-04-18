@@ -9,7 +9,7 @@ const features = [
 ];
 
 export function HomePage() {
-  const bgUrl = `${import.meta.env.BASE_URL}robot.jpg`;
+  const bgUrl = `${import.meta.env.BASE_URL}preview.jpg`;
 
   return (
     <div className="home">
