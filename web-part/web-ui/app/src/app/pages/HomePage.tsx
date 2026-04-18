@@ -18,9 +18,9 @@ export function HomePage() {
         <div className="parallax-bg" style={{ backgroundImage: `url(${bgUrl})` }} />
         <div className="parallax-content">
           <div className="hero-inner">
-            <h1 className="hero-title">OpenClaw</h1>
+            <h1 className="hero-title">暗域捕手</h1>
             <p className="hero-subtitle">
-              智能巡拢家居机器人任务中枢 — 面向床底、沙发底、柜底低矮空间的寻物取物平台
+              基于云服务器的智能终端 — 面向床底、沙发底、柜底低矮空间的寻物取物平台
             </p>
             <Link to="/monitor" className="feature-card" style={{ maxWidth: 240 }}>
               进入监控室

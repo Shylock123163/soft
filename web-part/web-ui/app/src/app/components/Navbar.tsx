@@ -17,7 +17,7 @@ export function Navbar() {
   return (
     <>
       <header className="navbar">
-        <Link to="/" className="navbar-brand">OpenClaw</Link>
+        <Link to="/" className="navbar-brand">暗域捕手</Link>
         <nav className="navbar-links">
           {links.map(({ to, label, icon: Icon }) => (
             <Link key={to} to={to} className={location.pathname === to ? 'active' : ''}>

@@ -38,7 +38,8 @@ export function SplashScreen() {
       <div className={`splash-overlay ${phase === 'flying' || phase === 'door' || phase === 'entering' ? 'fade-out' : ''}`}>
         {phase === 'loading' && (
           <>
-            <h1 className="splash-title">OpenClaw 智能监控室</h1>
+            <h1 className="splash-title">暗域捕手</h1>
+            <p className="splash-subtitle">基于云服务器的智能终端</p>
             <div className="splash-loader" />
           </>
         )}
