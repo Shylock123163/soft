@@ -28,4 +28,4 @@
 
 1. `deploy/lubancat-deploy/README.md`
 2. `training/sweep_server/README.md`
-3. `training/sweep_server/docs/STEPS.md`
+3. `training/sweep_server/source/docs/STEPS.md`

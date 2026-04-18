@@ -65,4 +65,5 @@
 1. `web-part/web-ui/WEB_UI_SUMMARY.md`
 2. `vision-server-part/deploy/lubancat-deploy/README.md`
 3. `vision-server-part/training/sweep_server/README.md`
-4. `stm32-part/car/VISION_SERIAL_INTEGRATION.md`
+4. `vision-server-part/training/sweep_server/source/docs/STEPS.md`
+5. `stm32-part/car/VISION_SERIAL_INTEGRATION.md`
