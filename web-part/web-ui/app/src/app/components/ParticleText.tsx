@@ -159,26 +159,26 @@ export function ParticleText({
       for (let i = 0; i < particles.length; i++) {
         const p = particles[i];
 
-        let baseVx = (p.nx - p.x) / 30;
-        let baseVy = (p.ny - p.y) / 30;
+        let baseVx = (p.nx - p.x) / 12;
+        let baseVy = (p.ny - p.y) / 12;
 
         const dx = mx - p.x;
         const dy = my - p.y;
         const distSq = dx * dx + dy * dy;
 
-        if (distSq < thicknessSquared * 4 && distSq > 0.1) {
+        if (distSq < thicknessSquared * 5 && distSq > 0.1) {
           const angle = Math.atan2(dy, dx);
           let force = thicknessSquared / distSq;
-          if (force > 7) force = 7;
+          if (force > 10) force = 10;
 
           const forceX = force * Math.cos(angle);
           const forceY = force * Math.sin(angle);
 
-          const springX = (p.ox - p.x) * 0.02;
-          const springY = (p.oy - p.y) * 0.02;
+          const springX = (p.ox - p.x) * 0.08;
+          const springY = (p.oy - p.y) * 0.08;
 
-          baseVx += (-forceX * 0.95 + springX);
-          baseVy += (-forceY * 0.95 + springY);
+          baseVx += (-forceX * 1.2 + springX);
+          baseVy += (-forceY * 1.2 + springY);
         }
 
         p.vx = baseVx;
@@ -187,7 +187,7 @@ export function ParticleText({
         p.y += p.vy;
 
         if (p.opacity < 1) {
-          p.opacity += 0.015;
+          p.opacity += 0.025;
           if (p.opacity > 1) p.opacity = 1;
         }
 

@@ -26,10 +26,10 @@ export function HomePage() {
             <div className="hero-particle-wrap">
               <ParticleText
                 text="暗域捕手"
-                fontSize={90}
-                particleSize={1.3}
+                fontSize={130}
+                particleSize={1.4}
                 gap={3}
-                mouseRadius={70}
+                mouseRadius={80}
                 color="#ffffff"
                 className="hero-particle-canvas"
                 style={{ width: '100%', height: '100%' }}

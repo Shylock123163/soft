@@ -64,8 +64,8 @@
 
 /* Particle text canvas container */
 .hero-particle-wrap {
-  width: min(700px, 85vw);
-  height: 140px;
+  width: min(800px, 90vw);
+  height: 180px;
   position: relative;
   animation: hero-fade-up 0.8s ease-out;
 }
